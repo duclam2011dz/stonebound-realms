@@ -92,9 +92,20 @@ function buildBlockLightGrid(lightSources, getCell, baseX, baseZ, lodStep, sizeX
 
   const volume = sizeX * sizeY * sizeZ;
   const light = new Uint8Array(volume);
-  const queue = new Int32Array(volume * 3);
+  let queue = new Int32Array(Math.max(256, volume * 3));
   let head = 0;
   let tail = 0;
+
+  const pushToQueue = (x, y, z) => {
+    if (tail + 3 > queue.length) {
+      const expanded = new Int32Array(queue.length * 2);
+      expanded.set(queue);
+      queue = expanded;
+    }
+    queue[tail++] = x;
+    queue[tail++] = y;
+    queue[tail++] = z;
+  };
 
   const pushSeed = (x, y, z, level) => {
     if (level <= 0) return;
@@ -102,9 +113,7 @@ function buildBlockLightGrid(lightSources, getCell, baseX, baseZ, lodStep, sizeX
     const idx = x + y * sizeX + z * sizeX * sizeY;
     if (level <= light[idx]) return;
     light[idx] = level;
-    queue[tail++] = x;
-    queue[tail++] = y;
-    queue[tail++] = z;
+    pushToQueue(x, y, z);
   };
 
   for (const source of lightSources) {
@@ -137,9 +146,7 @@ function buildBlockLightGrid(lightSources, getCell, baseX, baseZ, lodStep, sizeX
       const nIdx = nx + ny * sizeX + nz * sizeX * sizeY;
       if (nextLevel <= light[nIdx]) return;
       light[nIdx] = nextLevel;
-      queue[tail++] = nx;
-      queue[tail++] = ny;
-      queue[tail++] = nz;
+      pushToQueue(nx, ny, nz);
     };
     tryPush(x + 1, y, z);
     tryPush(x - 1, y, z);
