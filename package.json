@@ -2,7 +2,16 @@
   "name": "stonebound-realms",
   "private": true,
   "type": "module",
+  "scripts": {
+    "lint": "eslint \"src/**/*.js\" \"tools/**/*.mjs\"",
+    "format": "prettier --write \"**/*.{js,mjs,css,html,json,md}\""
+  },
   "dependencies": {
     "playwright": "^1.58.2"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.3.3"
   }
 }
