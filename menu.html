@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stonebound Realms - Main Menu</title>
+  <link rel="stylesheet" href="./menu.css" />
+</head>
+
+<body>
+  <div class="menu-scenery" aria-hidden="true">
+    <div class="menu-sky-glow"></div>
+    <div class="menu-horizon"></div>
+    <div class="menu-grid-fade"></div>
+  </div>
+  <main id="menuOverlay" class="menu-overlay is-visible">
+    <section class="menu-card menu-main-card" id="menuMain">
+      <p class="menu-badge">Survival Sandbox</p>
+      <h1 class="menu-title">Stonebound Realms</h1>
+      <p class="menu-tagline">Classic block-building spirit, smoother modern controls.</p>
+      <button id="playButton" class="menu-button">Start Adventure</button>
+      <button id="settingsButton" class="menu-button menu-button-secondary">World Settings</button>
+      <p class="menu-hint">Tip: use a fixed seed if you want to share the same world layout.</p>
+    </section>
+    <section class="menu-card settings-card is-hidden" id="settingsPanel">
+      <h2 class="menu-subtitle">Game Settings</h2>
+      <p class="settings-note">Tune quality and movement before entering your world.</p>
+      <div id="settingsFields" class="settings-fields"></div>
+      <button id="backButton" class="menu-button menu-button-secondary">Back</button>
+    </section>
+  </main>
+  <script type="module" src="./src/pages/menu/menuPage.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,211 @@
+:root {
+  --text-main: #f5efe1;
+  --text-soft: #d8cfbf;
+  --panel-border: rgba(236, 217, 185, 0.32);
+  --panel-shadow: rgba(0, 0, 0, 0.45);
+  --input-bg: rgba(12, 16, 20, 0.52);
+  --accent-gold: #d9b064;
+  --accent-gold-strong: #efd38c;
+  --accent-steel: #8495ad;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  min-height: 100%;
+  font-family: "Trebuchet MS", "Lucida Sans Unicode", "Book Antiqua", serif;
+  color: var(--text-main);
+  background: linear-gradient(180deg, #77a7cf 0%, #597f9b 40%, #274235 100%);
+}
+
+.create-world-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.bg-light {
+  position: absolute;
+  width: 72vw;
+  height: 72vw;
+  top: -30vw;
+  right: -18vw;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 235, 191, 0.8), rgba(255, 235, 191, 0));
+  animation: glowMove 10s ease-in-out infinite alternate;
+}
+
+.bg-noise {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(8, 13, 17, 0.28), rgba(8, 13, 17, 0.62)),
+    repeating-linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.02) 0,
+      rgba(255, 255, 255, 0.02) 8px,
+      rgba(0, 0, 0, 0.02) 8px,
+      rgba(0, 0, 0, 0.02) 16px
+    );
+}
+
+.create-world-layout {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  position: relative;
+  z-index: 1;
+}
+
+.create-world-card {
+  width: min(92vw, 560px);
+  border-radius: 14px;
+  border: 2px solid var(--panel-border);
+  background:
+    linear-gradient(180deg, rgba(43, 36, 29, 0.64), rgba(20, 17, 13, 0.88)),
+    repeating-linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.03) 0,
+      rgba(255, 255, 255, 0.03) 8px,
+      rgba(0, 0, 0, 0.03) 8px,
+      rgba(0, 0, 0, 0.03) 16px
+    );
+  box-shadow:
+    0 22px 42px var(--panel-shadow),
+    inset 0 1px 0 rgba(255, 247, 228, 0.33);
+  padding: 22px;
+  animation: cardEnter 420ms ease-out both;
+}
+
+.card-overline {
+  margin: 0 0 8px;
+  font-size: 12px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: #ffe8bb;
+}
+
+.create-world-card h1 {
+  margin: 0;
+  font-size: clamp(30px, 4.6vw, 40px);
+  font-family: "Georgia", "Palatino Linotype", serif;
+  text-shadow: 0 8px 18px rgba(0, 0, 0, 0.44);
+}
+
+.subtitle {
+  margin: 11px 0 16px;
+  color: var(--text-soft);
+  font-size: 15px;
+}
+
+.field {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+
+.field span {
+  font-size: 13px;
+  color: #f3e2c4;
+}
+
+.field input {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  padding: 11px 12px;
+  background: var(--input-bg);
+  color: #ffffff;
+  font-size: 15px;
+}
+
+.field input:focus {
+  outline: 2px solid rgba(239, 211, 140, 0.45);
+  border-color: rgba(239, 211, 140, 0.5);
+}
+
+.seed-note {
+  margin: 4px 0 0;
+  padding: 9px 11px;
+  border-radius: 8px;
+  background: rgba(11, 15, 20, 0.38);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e7dcc6;
+  font-size: 13px;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.btn {
+  border: 0;
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform 120ms ease, filter 120ms ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn-primary {
+  color: #312514;
+  background: linear-gradient(180deg, var(--accent-gold-strong), var(--accent-gold));
+}
+
+.btn-secondary {
+  color: #ecf2fb;
+  background: linear-gradient(180deg, #9cb1c8, var(--accent-steel));
+}
+
+@keyframes cardEnter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes glowMove {
+  from {
+    transform: translateY(0) scale(1);
+  }
+  to {
+    transform: translateY(16px) scale(1.04);
+  }
+}
+
+@media (max-width: 720px) {
+  .create-world-layout {
+    padding: 14px;
+  }
+
+  .create-world-card {
+    padding: 18px;
+  }
+
+  .actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}

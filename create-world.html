@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stonebound Realms - Create World</title>
+  <link rel="stylesheet" href="./create-world.css" />
+</head>
+<body>
+  <div class="create-world-bg" aria-hidden="true">
+    <div class="bg-light"></div>
+    <div class="bg-noise"></div>
+  </div>
+  <main class="create-world-layout">
+    <section class="create-world-card">
+      <p class="card-overline">Stonebound Realms</p>
+      <h1>Create New Realm</h1>
+      <p class="subtitle">Pick a world name and seed to craft your own terrain story.</p>
+      <label class="field">
+        <span>World Name (optional)</span>
+        <input id="worldNameInput" type="text" placeholder="My Frontier Realm" />
+      </label>
+      <label class="field">
+        <span>Seed (optional)</span>
+        <input id="seedInput" type="text" placeholder="Leave empty for randomized terrain" />
+      </label>
+      <div class="seed-note">
+        <strong>Seed behavior:</strong> same seed = same terrain shape and spawn point.
+      </div>
+      <div class="actions">
+        <button id="startWorldButton" class="btn btn-primary">Forge World</button>
+        <button id="backToMenuButton" class="btn btn-secondary">Back To Menu</button>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="./src/pages/create-world/createWorldPage.js"></script>
+</body>
+</html>
