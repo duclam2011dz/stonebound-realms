@@ -1,7 +1,15 @@
-import { colorToCss, tint } from './color';
+import { colorToCss, tint, type RGB } from './color';
 import { lcg } from './random';
 
-export function drawNoiseTile(ctx, tileX, tileY, tileSize, baseColor, seed, strength = 22) {
+export function drawNoiseTile(
+  ctx: CanvasRenderingContext2D,
+  tileX: number,
+  tileY: number,
+  tileSize: number,
+  baseColor: RGB,
+  seed: number,
+  strength = 22
+): void {
   const rand = lcg(seed);
   const startX = tileX * tileSize;
   const startY = tileY * tileSize;

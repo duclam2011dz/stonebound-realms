@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export function createCelestialBody(size, color) {
+export function createCelestialBody(size: number, color: number): THREE.Mesh {
   const geometry = new THREE.PlaneGeometry(size, size, 1, 1);
   const material = new THREE.MeshBasicMaterial({
     color,

@@ -1,5 +1,7 @@
 import { BLOCK_ATLAS, BLOCK_FACE_TILES } from '../config/constants';
 import { getProceduralAtlasAssets } from '../textures/proceduralBlockAtlas';
+import type { InventoryState } from './InventoryState';
+import type { BlockType } from '../world/services/BlockPalette';
 
 const FALLBACK_COLORS = {
   grass: '#62b34e',
@@ -11,7 +13,9 @@ const FALLBACK_COLORS = {
   lamp: '#f3d16c'
 };
 
-function getIconTile(blockType) {
+type BlockTile = { x: number; y: number };
+
+function getIconTile(blockType: BlockType): BlockTile | null {
   if (blockType === 'grass') return BLOCK_FACE_TILES.grass.top;
   if (blockType === 'wood') return BLOCK_FACE_TILES.wood.all;
   if (blockType === 'leaf') return BLOCK_FACE_TILES.leaf.all;
@@ -22,7 +26,11 @@ function getIconTile(blockType) {
   return null;
 }
 
-function applyAtlasSwatch(element, blockType, atlasUrl) {
+function applyAtlasSwatch(
+  element: HTMLElement,
+  blockType: BlockType | null,
+  atlasUrl: string
+): void {
   if (!blockType) {
     element.style.backgroundImage = '';
     element.style.backgroundColor = 'transparent';
@@ -42,8 +50,21 @@ function applyAtlasSwatch(element, blockType, atlasUrl) {
   element.style.backgroundColor = 'transparent';
 }
 
+type InventoryUIOptions = {
+  overlayElement: HTMLElement | null;
+  gridElement: HTMLElement | null;
+  inventoryState: InventoryState;
+};
+
 export class InventoryUI {
-  constructor({ overlayElement, gridElement, inventoryState }) {
+  overlayElement: HTMLElement | null;
+  gridElement: HTMLElement | null;
+  inventoryState: InventoryState;
+  isOpen: boolean;
+  slotElements: HTMLElement[];
+  proceduralAtlasImageUrl: string;
+
+  constructor({ overlayElement, gridElement, inventoryState }: InventoryUIOptions) {
     this.overlayElement = overlayElement;
     this.gridElement = gridElement;
     this.inventoryState = inventoryState;
@@ -56,7 +77,7 @@ export class InventoryUI {
     this.refreshSlots();
   }
 
-  renderGrid() {
+  renderGrid(): void {
     if (!this.gridElement) return;
     this.gridElement.innerHTML = '';
     this.slotElements = [];
@@ -73,11 +94,11 @@ export class InventoryUI {
       slot.appendChild(swatch);
       slot.appendChild(count);
 
-      slot.addEventListener('dragover', (event) => {
+      slot.addEventListener('dragover', (event: DragEvent) => {
         event.preventDefault();
       });
 
-      slot.addEventListener('drop', (event) => {
+      slot.addEventListener('drop', (event: DragEvent) => {
         event.preventDefault();
         const sourceIndex = Number(event.dataTransfer?.getData('text/plain'));
         const targetIndex = Number(slot.dataset.slotIndex);
@@ -85,7 +106,7 @@ export class InventoryUI {
         this.inventoryState.swapSlots(sourceIndex, targetIndex);
       });
 
-      slot.addEventListener('dragstart', (event) => {
+      slot.addEventListener('dragstart', (event: DragEvent) => {
         const fromIndex = Number(slot.dataset.slotIndex);
         const slotItem = this.inventoryState.getSlot(fromIndex);
         if (!slotItem) {
@@ -100,11 +121,11 @@ export class InventoryUI {
     }
   }
 
-  refreshSlots() {
+  refreshSlots(): void {
     this.slotElements.forEach((slotElement, index) => {
       const slotItem = this.inventoryState.getSlot(index);
-      const swatch = slotElement.querySelector('.inventory-swatch');
-      const count = slotElement.querySelector('.inventory-count');
+      const swatch = slotElement.querySelector<HTMLElement>('.inventory-swatch');
+      const count = slotElement.querySelector<HTMLElement>('.inventory-count');
       if (!swatch) return;
       applyAtlasSwatch(swatch, slotItem?.blockType ?? null, this.proceduralAtlasImageUrl);
       if (count) {
@@ -116,7 +137,7 @@ export class InventoryUI {
     });
   }
 
-  setOpen(nextOpen) {
+  setOpen(nextOpen: boolean): void {
     this.isOpen = nextOpen;
     this.overlayElement?.classList.toggle('is-hidden', !nextOpen);
   }

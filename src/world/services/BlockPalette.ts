@@ -7,8 +7,6 @@ export const BLOCK_ID_LEAF = 5;
 export const BLOCK_ID_SAND = 6;
 export const BLOCK_ID_LAMP = 7;
 
-const BLOCK_TYPES_BY_ID = [null, 'grass', 'dirt', 'stone', 'wood', 'leaf', 'sand', 'lamp'];
-
 const BLOCK_IDS_BY_TYPE = Object.freeze({
   grass: BLOCK_ID_GRASS,
   dirt: BLOCK_ID_DIRT,
@@ -19,18 +17,31 @@ const BLOCK_IDS_BY_TYPE = Object.freeze({
   lamp: BLOCK_ID_LAMP
 });
 
-export const BLOCK_TYPES = Object.freeze(Object.keys(BLOCK_IDS_BY_TYPE));
+export type BlockType = keyof typeof BLOCK_IDS_BY_TYPE;
 
-export function isValidBlockType(type) {
+const BLOCK_TYPES_BY_ID: Array<BlockType | null> = [
+  null,
+  'grass',
+  'dirt',
+  'stone',
+  'wood',
+  'leaf',
+  'sand',
+  'lamp'
+];
+
+export const BLOCK_TYPES = Object.freeze(Object.keys(BLOCK_IDS_BY_TYPE) as BlockType[]);
+
+export function isValidBlockType(type: string): type is BlockType {
   if (!type) return false;
-  return Object.hasOwn(BLOCK_IDS_BY_TYPE, type);
+  return Object.prototype.hasOwnProperty.call(BLOCK_IDS_BY_TYPE, type);
 }
 
-export function blockTypeToId(type) {
+export function blockTypeToId(type: string | null | undefined): number {
   if (!type) return BLOCK_ID_AIR;
-  return BLOCK_IDS_BY_TYPE[type] ?? BLOCK_ID_DIRT;
+  return BLOCK_IDS_BY_TYPE[type as BlockType] ?? BLOCK_ID_DIRT;
 }
 
-export function blockIdToType(id) {
+export function blockIdToType(id: number): BlockType | null {
   return BLOCK_TYPES_BY_ID[id] ?? null;
 }

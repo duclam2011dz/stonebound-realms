@@ -1,7 +1,12 @@
 import { colorToCss } from '../../shared/color';
 import { drawNoiseTile } from '../../shared/drawNoiseTile';
 
-export function drawWoodTile(ctx, tileX, tileY, tileSize) {
+export function drawWoodTile(
+  ctx: CanvasRenderingContext2D,
+  tileX: number,
+  tileY: number,
+  tileSize: number
+): void {
   drawNoiseTile(ctx, tileX, tileY, tileSize, [123, 90, 56], 1101, 18);
   const startX = tileX * tileSize;
   const startY = tileY * tileSize;

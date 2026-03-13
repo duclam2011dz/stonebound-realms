@@ -1,4 +1,18 @@
+export type InputActions = {
+  breakHeld: boolean;
+  placeBlock: boolean;
+  reloadChunks: boolean;
+};
+
 export class InputState {
+  keys: Map<string, boolean>;
+  lookDeltaX: number;
+  lookDeltaY: number;
+  breakHeld: boolean;
+  placeRequested: boolean;
+  reloadRequested: boolean;
+  selectedHotbarSlot: number;
+
   constructor() {
     this.keys = new Map();
     this.lookDeltaX = 0;
@@ -9,11 +23,11 @@ export class InputState {
     this.selectedHotbarSlot = 0;
   }
 
-  isKeyDown(code) {
+  isKeyDown(code: string): boolean {
     return this.keys.get(code) === true;
   }
 
-  consumeLookDelta() {
+  consumeLookDelta(): { dx: number; dy: number } {
     const dx = this.lookDeltaX;
     const dy = this.lookDeltaY;
     this.lookDeltaX = 0;
@@ -21,7 +35,7 @@ export class InputState {
     return { dx, dy };
   }
 
-  consumeActions() {
+  consumeActions(): InputActions {
     const actions = {
       breakHeld: this.breakHeld,
       placeBlock: this.placeRequested,
@@ -32,7 +46,7 @@ export class InputState {
     return actions;
   }
 
-  reset() {
+  reset(): void {
     this.keys.clear();
     this.lookDeltaX = 0;
     this.lookDeltaY = 0;

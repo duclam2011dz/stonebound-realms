@@ -1,6 +1,38 @@
 import * as THREE from 'three';
 
-export function createTransform(position) {
+export type TransformComponent = {
+  position: THREE.Vector3;
+  yaw: number;
+  pitch: number;
+};
+
+export type PhysicsComponent = {
+  velocity: THREE.Vector3;
+  onGround: boolean;
+  radius: number;
+  height: number;
+  eyeHeight: number;
+  moveSpeed: number;
+  jumpSpeed: number;
+};
+
+export type ControllerComponent = {
+  enabled: boolean;
+};
+
+export type GamemodeComponent = {
+  mode: string;
+};
+
+export type PhysicsConfig = {
+  radius: number;
+  height: number;
+  eyeHeight: number;
+  moveSpeed: number;
+  jumpSpeed: number;
+};
+
+export function createTransform(position: THREE.Vector3): TransformComponent {
   return {
     position: position.clone(),
     yaw: 0,
@@ -8,7 +40,7 @@ export function createTransform(position) {
   };
 }
 
-export function createPhysics(config) {
+export function createPhysics(config: PhysicsConfig): PhysicsComponent {
   return {
     velocity: new THREE.Vector3(),
     onGround: false,
@@ -20,13 +52,13 @@ export function createPhysics(config) {
   };
 }
 
-export function createController() {
+export function createController(): ControllerComponent {
   return {
     enabled: true
   };
 }
 
-export function createGamemode(initialMode = 'survival') {
+export function createGamemode(initialMode = 'survival'): GamemodeComponent {
   return {
     mode: initialMode
   };

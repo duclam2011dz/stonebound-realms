@@ -1,9 +1,29 @@
 import * as THREE from 'three';
+import type { GameSettings } from '../config/constants';
+import type { VoxelWorld } from '../world/VoxelWorld';
+import type { VoxelHit } from '../world/services/VoxelRaycaster';
+import type { BreakState } from './BlockInteractionSystem';
 import { getBlockTargetKey } from './interactions/blockBreakProfile';
 import { createBreakStageTextures } from './targeting/createBreakStageTextures';
 
 export class TargetingSystem {
-  constructor(scene, world, camera, settings) {
+  scene: THREE.Scene;
+  world: VoxelWorld;
+  camera: THREE.PerspectiveCamera;
+  settings: GameSettings;
+  currentHit: VoxelHit | null;
+  breakState: BreakState | null;
+  breakTextures: THREE.CanvasTexture[];
+  activeBreakStage: number;
+  highlightMesh: THREE.LineSegments<THREE.EdgesGeometry, THREE.LineBasicMaterial>;
+  breakMesh: THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial>;
+
+  constructor(
+    scene: THREE.Scene,
+    world: VoxelWorld,
+    camera: THREE.PerspectiveCamera,
+    settings: GameSettings
+  ) {
     this.scene = scene;
     this.world = world;
     this.camera = camera;
@@ -34,7 +54,7 @@ export class TargetingSystem {
     this.scene.add(this.breakMesh);
   }
 
-  update() {
+  update(): void {
     this.currentHit = this.world.raycastFromCamera(this.camera, this.settings.maxRayDistance);
 
     const block = this.currentHit?.block;
@@ -49,7 +69,7 @@ export class TargetingSystem {
     this.updateBreakOverlay(block);
   }
 
-  setBreakState(state) {
+  setBreakState(state: BreakState | null): void {
     this.breakState = state;
     if (!state) {
       this.breakMesh.visible = false;
@@ -57,7 +77,7 @@ export class TargetingSystem {
     }
   }
 
-  updateBreakOverlay(block) {
+  updateBreakOverlay(block: VoxelHit['block']): void {
     if (!this.breakState || !this.breakTextures.length) {
       this.breakMesh.visible = false;
       return;
@@ -74,7 +94,8 @@ export class TargetingSystem {
       Math.floor(this.breakState.progress * this.breakTextures.length)
     );
     if (stage !== this.activeBreakStage) {
-      this.breakMesh.material.map = this.breakTextures[stage];
+      const texture = this.breakTextures[stage] ?? this.breakTextures[0] ?? null;
+      this.breakMesh.material.map = texture;
       this.breakMesh.material.needsUpdate = true;
       this.activeBreakStage = stage;
     }
@@ -83,7 +104,7 @@ export class TargetingSystem {
     this.breakMesh.position.set(block.x + 0.5, block.y + 0.5, block.z + 0.5);
   }
 
-  getCurrentHit() {
+  getCurrentHit(): VoxelHit | null {
     return this.currentHit;
   }
 }

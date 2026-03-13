@@ -1,6 +1,18 @@
 import * as THREE from 'three';
 
+export type VoxelHit = {
+  point: THREE.Vector3;
+  block: { x: number; y: number; z: number };
+  face: { normal: THREE.Vector3 };
+};
+
+type BlockFilledFn = (x: number, y: number, z: number) => boolean;
+
 export class VoxelRaycaster {
+  private rayOrigin: THREE.Vector3;
+  private rayDirection: THREE.Vector3;
+  private rayHit: VoxelHit;
+
   constructor() {
     this.rayOrigin = new THREE.Vector3();
     this.rayDirection = new THREE.Vector3();
@@ -11,7 +23,11 @@ export class VoxelRaycaster {
     };
   }
 
-  raycast(camera, maxDistance, isBlockFilled) {
+  raycast(
+    camera: THREE.Camera,
+    maxDistance: number,
+    isBlockFilled: BlockFilledFn
+  ): VoxelHit | null {
     this.rayOrigin.copy(camera.position);
     camera.getWorldDirection(this.rayDirection);
     this.rayDirection.normalize();

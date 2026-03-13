@@ -2,7 +2,12 @@ import { colorToCss } from '../../shared/color';
 import { drawNoiseTile } from '../../shared/drawNoiseTile';
 import { lcg } from '../../shared/random';
 
-export function drawLeafTile(ctx, tileX, tileY, tileSize) {
+export function drawLeafTile(
+  ctx: CanvasRenderingContext2D,
+  tileX: number,
+  tileY: number,
+  tileSize: number
+): void {
   drawNoiseTile(ctx, tileX, tileY, tileSize, [60, 130, 56], 1201, 28);
   const startX = tileX * tileSize;
   const startY = tileY * tileSize;

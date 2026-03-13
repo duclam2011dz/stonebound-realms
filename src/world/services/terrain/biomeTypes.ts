@@ -3,13 +3,13 @@ export const BIOME_FOREST = 1;
 export const BIOME_HILL = 2;
 export const BIOME_DESERT = 3;
 
-export const BIOME_NAME_BY_ID = Object.freeze({
+export const BIOME_NAME_BY_ID: Readonly<Record<number, string>> = Object.freeze({
   [BIOME_PLAIN]: 'plain',
   [BIOME_FOREST]: 'forest',
   [BIOME_HILL]: 'hill',
   [BIOME_DESERT]: 'desert'
 });
 
-export function biomeIdToName(biomeId) {
+export function biomeIdToName(biomeId: number): string {
   return BIOME_NAME_BY_ID[biomeId] ?? 'plain';
 }

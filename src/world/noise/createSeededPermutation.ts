@@ -1,6 +1,6 @@
 const PERMUTATION_SIZE = 256;
 
-function xmur3(str) {
+function xmur3(str: string): () => number {
   let h = 1779033703 ^ str.length;
   for (let i = 0; i < str.length; i++) {
     h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
@@ -13,7 +13,7 @@ function xmur3(str) {
   };
 }
 
-function mulberry32(a) {
+function mulberry32(a: number): () => number {
   return () => {
     let t = (a += 0x6d2b79f5);
     t = Math.imul(t ^ (t >>> 15), t | 1);
@@ -22,7 +22,7 @@ function mulberry32(a) {
   };
 }
 
-export function createSeededPermutation(seed = 'default-seed') {
+export function createSeededPermutation(seed: string | number = 'default-seed'): Uint8Array {
   const seedFn = xmur3(String(seed));
   const rand = mulberry32(seedFn());
   const perm = new Uint8Array(PERMUTATION_SIZE);
@@ -30,14 +30,14 @@ export function createSeededPermutation(seed = 'default-seed') {
 
   for (let i = PERMUTATION_SIZE - 1; i > 0; i--) {
     const j = Math.floor(rand() * (i + 1));
-    const tmp = perm[i];
-    perm[i] = perm[j];
+    const tmp = perm[i] ?? 0;
+    perm[i] = perm[j] ?? 0;
     perm[j] = tmp;
   }
 
   const permDoubled = new Uint8Array(PERMUTATION_SIZE * 2);
   for (let i = 0; i < PERMUTATION_SIZE * 2; i++) {
-    permDoubled[i] = perm[i & 255];
+    permDoubled[i] = perm[i & 255] ?? 0;
   }
 
   return permDoubled;

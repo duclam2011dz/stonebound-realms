@@ -1,7 +1,7 @@
 import { colorToCss } from '../shared/color';
 import { drawNoiseTile } from '../shared/drawNoiseTile';
 
-export function drawMobTiles(ctx, tileSize) {
+export function drawMobTiles(ctx: CanvasRenderingContext2D, tileSize: number): void {
   drawNoiseTile(ctx, 0, 0, tileSize, [126, 172, 126], 8801, 18);
   const startX = 0;
   const startY = 0;

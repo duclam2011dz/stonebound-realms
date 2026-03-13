@@ -1,7 +1,16 @@
 import * as THREE from 'three';
 import { createCelestialBody } from './lighting/createCelestialBody';
 
-export function setupLighting(scene) {
+export type LightingRig = {
+  ambientLight: THREE.AmbientLight;
+  hemisphereLight: THREE.HemisphereLight;
+  sunLight: THREE.DirectionalLight;
+  moonLight: THREE.DirectionalLight;
+  sunBody: THREE.Mesh;
+  moonBody: THREE.Mesh;
+};
+
+export function setupLighting(scene: THREE.Scene): LightingRig {
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
   scene.add(ambientLight);
 

@@ -20,6 +20,8 @@ export const DEFAULT_SETTINGS = {
   lookSensitivity: 0.0022
 };
 
+export type GameSettings = typeof DEFAULT_SETTINGS;
+
 export const BLOCK_ATLAS = {
   columns: 16,
   rows: 8

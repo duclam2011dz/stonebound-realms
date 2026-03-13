@@ -1,50 +1,62 @@
 export const MAX_STACK_SIZE = 64;
 
-function normalizeSlot(slot) {
+import type { BlockType } from '../world/services/BlockPalette';
+
+export type InventorySlot = {
+  blockType: BlockType;
+  quantity: number;
+};
+
+function normalizeSlot(slot: InventorySlot | null | undefined): InventorySlot | null {
   if (!slot?.blockType) return null;
   const quantity = Math.max(1, Math.min(MAX_STACK_SIZE, Math.floor(Number(slot.quantity) || 1)));
   return { blockType: slot.blockType, quantity };
 }
 
 export class InventoryState {
-  constructor(size, initialSlots = []) {
+  size: number;
+  slots: Array<InventorySlot | null>;
+  listeners: Array<() => void>;
+
+  constructor(size: number, initialSlots: Array<InventorySlot | null> = []) {
     this.size = size;
     this.slots = new Array(size).fill(null);
     this.listeners = [];
 
     for (let i = 0; i < Math.min(size, initialSlots.length); i++) {
-      this.slots[i] = normalizeSlot(initialSlots[i]);
+      this.slots[i] = normalizeSlot(initialSlots[i] ?? null);
     }
   }
 
-  addListener(callback) {
+  addListener(callback: () => void): void {
     this.listeners.push(callback);
   }
 
-  emitChange() {
+  emitChange(): void {
     for (const callback of this.listeners) callback();
   }
 
-  getSlot(index) {
+  getSlot(index: number): InventorySlot | null {
     if (index < 0 || index >= this.size) return null;
-    return this.slots[index];
+    return this.slots[index] ?? null;
   }
 
-  setSlot(index, value) {
+  setSlot(index: number, value: InventorySlot | null): void {
     if (index < 0 || index >= this.size) return;
     this.slots[index] = normalizeSlot(value);
     this.emitChange();
   }
 
-  swapSlots(a, b) {
+  swapSlots(a: number, b: number): void {
     if (a < 0 || a >= this.size || b < 0 || b >= this.size) return;
-    const tmp = this.slots[a];
-    this.slots[a] = this.slots[b];
-    this.slots[b] = tmp;
+    const slotA = this.slots[a] ?? null;
+    const slotB = this.slots[b] ?? null;
+    this.slots[a] = slotB;
+    this.slots[b] = slotA;
     this.emitChange();
   }
 
-  removeFromSlot(index, amount = 1) {
+  removeFromSlot(index: number, amount = 1): number {
     if (index < 0 || index >= this.size) return 0;
     const slot = this.slots[index];
     if (!slot) return 0;
@@ -58,7 +70,7 @@ export class InventoryState {
     return removed;
   }
 
-  addBlock(blockType, amount = 1) {
+  addBlock(blockType: BlockType, amount = 1): number {
     if (!blockType) return amount;
     let remaining = Math.max(1, Math.floor(Number(amount) || 1));
     let changed = false;
@@ -89,7 +101,7 @@ export class InventoryState {
     return remaining;
   }
 
-  findNextEmptySlot(startIndex) {
+  findNextEmptySlot(startIndex: number): number {
     if (this.size <= 0) return -1;
     const normalizedStart = ((startIndex % this.size) + this.size) % this.size;
     for (let offset = 0; offset < this.size; offset++) {
@@ -99,7 +111,7 @@ export class InventoryState {
     return -1;
   }
 
-  findLastOccupiedSlot() {
+  findLastOccupiedSlot(): number {
     for (let index = this.size - 1; index >= 0; index--) {
       if (this.slots[index]) return index;
     }

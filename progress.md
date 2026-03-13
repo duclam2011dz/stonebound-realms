@@ -326,3 +326,11 @@ Update 2026-03-13 (TypeScript + Vite migration):
 - Updated ESLint for TypeScript and ran format/lint successfully.
 - Added Vite-friendly three dependency and removed CDN importmap from game.html.
 
+Update 2026-03-13 (strict TS cleanup + typecheck):
+
+- Typed remaining systems, noise/terrain/meshing, input/UI, and ECS usage to clear strict TypeScript warnings.
+- Added
+  pm run typecheck (tsc --noEmit).
+- pm run typecheck: pass.
+- pm run lint: pass (removed unused ChunkTask import).
+- Playwright validation run via Vite dev server; screenshots/state saved in output/web-game (shot-0..2, state-0..2). No new console errors from Vite run; note prior http.server run left output/web-game/errors-0.json with a MIME-type module warning.

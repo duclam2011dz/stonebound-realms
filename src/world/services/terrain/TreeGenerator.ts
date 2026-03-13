@@ -1,15 +1,21 @@
+import type { SeededNoise } from '../../noise/SeededNoise';
+import type { VoxelStorage } from '../VoxelStorage';
 import { BLOCK_ID_LEAF, BLOCK_ID_WOOD } from '../BlockPalette';
 import { BIOME_DESERT, BIOME_FOREST, BIOME_HILL, BIOME_PLAIN } from './biomeTypes';
 import { coordHash } from './terrainHash';
 
 export class TreeGenerator {
-  constructor(noise, maxHeight, seedInt) {
+  noise: SeededNoise;
+  maxHeight: number;
+  seedInt: number;
+
+  constructor(noise: SeededNoise, maxHeight: number, seedInt: number) {
     this.noise = noise;
     this.maxHeight = maxHeight;
     this.seedInt = seedInt;
   }
 
-  shouldPlaceTree(x, z, topY, slope, biomeId) {
+  shouldPlaceTree(x: number, z: number, topY: number, slope: number, biomeId: number): boolean {
     if (biomeId === BIOME_DESERT) return false;
     if (topY < 12 || topY > this.maxHeight - 18) return false;
     if (biomeId === BIOME_HILL && slope > 1.35) return false;
@@ -32,7 +38,7 @@ export class TreeGenerator {
     return randomValue % density === 0;
   }
 
-  generateTree(storage, x, topY, z) {
+  generateTree(storage: VoxelStorage, x: number, topY: number, z: number): void {
     const treeRand = coordHash(this.seedInt, x * 13, z * 17);
     const trunkHeight = 4 + (treeRand % 4);
     const canopyY = topY + trunkHeight;

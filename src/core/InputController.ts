@@ -1,8 +1,18 @@
 import { bindInputEvents } from './input/InputBindings';
-import { InputState } from './input/InputState';
+import { InputState, type InputActions } from './input/InputState';
+
+type PointerLockListener = (isLocked: boolean) => void;
+type HotbarSelectionListener = (slotIndex: number) => void;
 
 export class InputController {
-  constructor(pointerLockElement) {
+  pointerLockElement: HTMLElement;
+  state: InputState;
+  captureEnabled: boolean;
+  pointerLockListeners: PointerLockListener[];
+  hotbarSelectionListeners: HotbarSelectionListener[];
+  bindingApi: { isPointerLocked: () => boolean };
+
+  constructor(pointerLockElement: HTMLElement) {
     this.pointerLockElement = pointerLockElement;
     this.state = new InputState();
     this.captureEnabled = true;
@@ -13,47 +23,47 @@ export class InputController {
       pointerLockElement: this.pointerLockElement,
       state: this.state,
       isCaptureEnabled: () => this.captureEnabled,
-      onPointerLockChange: (isLocked) => {
+      onPointerLockChange: (isLocked: boolean) => {
         for (const callback of this.pointerLockListeners) callback(isLocked);
       },
-      onHotbarSelection: (slotIndex) => {
+      onHotbarSelection: (slotIndex: number) => {
         for (const callback of this.hotbarSelectionListeners) callback(slotIndex);
       }
     });
   }
 
-  addPointerLockListener(callback) {
+  addPointerLockListener(callback: PointerLockListener): void {
     this.pointerLockListeners.push(callback);
   }
 
-  addHotbarSelectionListener(callback) {
+  addHotbarSelectionListener(callback: HotbarSelectionListener): void {
     this.hotbarSelectionListeners.push(callback);
   }
 
-  getSelectedHotbarSlot() {
+  getSelectedHotbarSlot(): number {
     return this.state.selectedHotbarSlot;
   }
 
-  isPointerLocked() {
+  isPointerLocked(): boolean {
     return this.bindingApi.isPointerLocked();
   }
 
-  setCaptureEnabled(enabled) {
+  setCaptureEnabled(enabled: boolean): void {
     this.captureEnabled = enabled;
     if (!enabled) {
       this.state.reset();
     }
   }
 
-  isKeyDown(code) {
+  isKeyDown(code: string): boolean {
     return this.state.isKeyDown(code);
   }
 
-  consumeLookDelta() {
+  consumeLookDelta(): { dx: number; dy: number } {
     return this.state.consumeLookDelta();
   }
 
-  consumeActions() {
+  consumeActions(): InputActions {
     return this.state.consumeActions();
   }
 }

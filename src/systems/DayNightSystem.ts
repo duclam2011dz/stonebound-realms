@@ -1,8 +1,41 @@
 import * as THREE from 'three';
 import { blendSkyColor, clamp, computeSunDirection } from './dayNight/dayNightMath';
+import type { VoxelWorld } from '../world/VoxelWorld';
+import type { LightingRig } from '../core/render/setupLighting';
+
+type DayNightOptions = {
+  scene: THREE.Scene;
+  camera: THREE.PerspectiveCamera;
+  world: VoxelWorld;
+  lighting: LightingRig;
+  cycleDurationSeconds?: number;
+};
 
 export class DayNightSystem {
-  constructor({ scene, camera, world, lighting, cycleDurationSeconds = 1170 }) {
+  scene: THREE.Scene;
+  camera: THREE.PerspectiveCamera;
+  world: VoxelWorld;
+  lighting: LightingRig;
+  cycleDurationSeconds: number;
+  timeSeconds: number;
+  nightVisionEnabled: boolean;
+  skyDistance: number;
+  sunDirection: THREE.Vector3;
+  moonDirection: THREE.Vector3;
+  tempPosition: THREE.Vector3;
+  targetPosition: THREE.Vector3;
+  skyDayColor: THREE.Color;
+  skyNightColor: THREE.Color;
+  skyDawnDuskColor: THREE.Color;
+  fogDayColor: THREE.Color;
+  fogNightColor: THREE.Color;
+  workingSkyColor: THREE.Color;
+  workingFogColor: THREE.Color;
+  workingNightVisionBlend: THREE.Color;
+  workingCaveDarkSky: THREE.Color;
+  workingCaveDarkFog: THREE.Color;
+
+  constructor({ scene, camera, world, lighting, cycleDurationSeconds = 1170 }: DayNightOptions) {
     this.scene = scene;
     this.camera = camera;
     this.world = world;
@@ -29,7 +62,7 @@ export class DayNightSystem {
     this.workingCaveDarkFog = new THREE.Color(0x05070c);
   }
 
-  setTimePreset(mode) {
+  setTimePreset(mode: 'day' | 'night'): void {
     if (mode === 'day') {
       this.timeSeconds = 0;
       return;
@@ -39,15 +72,15 @@ export class DayNightSystem {
     }
   }
 
-  setNightVisionEnabled(enabled) {
+  setNightVisionEnabled(enabled: boolean): void {
     this.nightVisionEnabled = Boolean(enabled);
   }
 
-  isNightVisionEnabled() {
+  isNightVisionEnabled(): boolean {
     return this.nightVisionEnabled;
   }
 
-  getTimeState() {
+  getTimeState(): { phase: number; mode: 'day' | 'night' } {
     const phase = this.timeSeconds / this.cycleDurationSeconds;
     return {
       phase,
@@ -55,12 +88,12 @@ export class DayNightSystem {
     };
   }
 
-  update(dt, playerPosition) {
+  update(dt: number, playerPosition: THREE.Vector3): void {
     this.timeSeconds = (this.timeSeconds + dt) % this.cycleDurationSeconds;
     this.applyToScene(playerPosition);
   }
 
-  applyToScene(playerPosition) {
+  applyToScene(playerPosition: THREE.Vector3): void {
     const phase = this.timeSeconds / this.cycleDurationSeconds;
     this.sunDirection.copy(computeSunDirection(phase));
     this.moonDirection.copy(this.sunDirection).multiplyScalar(-1);
@@ -79,7 +112,10 @@ export class DayNightSystem {
         : {
             directVisibility: 1,
             ambientVisibility: 1,
-            caveFactor: 0
+            caveFactor: 0,
+            skyOpenFraction: 1,
+            overheadBlocked: false,
+            frontBlocked: false
           };
     const moonVisibility =
       nightFactor > 0.001
@@ -163,14 +199,23 @@ export class DayNightSystem {
     }
   }
 
-  updateDirectionalLight(light, direction, playerPosition) {
+  updateDirectionalLight(
+    light: THREE.DirectionalLight,
+    direction: THREE.Vector3,
+    playerPosition: THREE.Vector3
+  ): void {
     this.tempPosition.copy(direction).multiplyScalar(this.skyDistance).add(playerPosition);
     light.position.copy(this.tempPosition);
     light.target.position.set(playerPosition.x, playerPosition.y, playerPosition.z);
     light.target.updateMatrixWorld();
   }
 
-  updateCelestialBody(body, direction, playerPosition, isVisible) {
+  updateCelestialBody(
+    body: THREE.Mesh,
+    direction: THREE.Vector3,
+    playerPosition: THREE.Vector3,
+    isVisible: boolean
+  ): void {
     body.visible = isVisible;
     if (!isVisible) return;
     this.tempPosition

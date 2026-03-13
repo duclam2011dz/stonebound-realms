@@ -7,9 +7,21 @@ import { calculateColumnSlope } from './terrain/heightMapUtils';
 import { TerrainHeightModel } from './terrain/TerrainHeightModel';
 import { TreeGenerator } from './terrain/TreeGenerator';
 import { BIOME_DESERT } from './terrain/biomeTypes';
+import type { VoxelStorage } from './VoxelStorage';
 
 export class TerrainGenerator {
-  constructor(chunkSize, maxHeight, seed = '') {
+  chunkSize: number;
+  maxHeight: number;
+  seed: string;
+  seedInt: number;
+  seedDisplay: string;
+  noise: SeededNoise;
+  biomeModel: BiomeModel;
+  heightModel: TerrainHeightModel;
+  caveCarver: CaveCarver;
+  treeGenerator: TreeGenerator;
+
+  constructor(chunkSize: number, maxHeight: number, seed: string = '') {
     this.chunkSize = chunkSize;
     this.maxHeight = maxHeight;
     this.seed = seed;
@@ -23,20 +35,20 @@ export class TerrainGenerator {
     this.treeGenerator = new TreeGenerator(this.noise, this.maxHeight, this.seedInt);
   }
 
-  getHeight(x, z) {
+  getHeight(x: number, z: number): number {
     const biomeId = this.biomeModel.getBiomeId(x, z);
     return this.heightModel.getHeight(x, z, biomeId);
   }
 
-  getBiomeAt(x, z) {
+  getBiomeAt(x: number, z: number): string {
     return this.biomeModel.getBiomeName(x, z);
   }
 
-  getBiomeIdAt(x, z) {
+  getBiomeIdAt(x: number, z: number): number {
     return this.biomeModel.getBiomeId(x, z);
   }
 
-  getBlockId(y, topY, biomeId) {
+  getBlockId(y: number, topY: number, biomeId: number): number {
     if (biomeId === BIOME_DESERT) {
       if (y === topY) return BLOCK_ID_SAND;
       if (y >= topY - 4) return BLOCK_ID_SAND;
@@ -47,7 +59,7 @@ export class TerrainGenerator {
     return BLOCK_ID_STONE;
   }
 
-  generateChunk(storage, cx, cz) {
+  generateChunk(storage: VoxelStorage, cx: number, cz: number): void {
     if (storage.isChunkLoaded(cx, cz)) return;
     const baseX = cx * this.chunkSize;
     const baseZ = cz * this.chunkSize;
@@ -58,8 +70,8 @@ export class TerrainGenerator {
     for (let lz = 0; lz < this.chunkSize; lz++) {
       for (let lx = 0; lx < this.chunkSize; lx++) {
         const columnIndex = lx + lz * this.chunkSize;
-        const topY = heightMap[columnIndex];
-        const biomeId = biomeMap[columnIndex];
+        const topY = heightMap[columnIndex] ?? 0;
+        const biomeId = biomeMap[columnIndex] ?? this.biomeModel.getBiomeId(baseX + lx, baseZ + lz);
 
         for (let y = 0; y <= topY; y++) {
           storage.setChunkLocalBlockId(cx, cz, lx, y, lz, this.getBlockId(y, topY, biomeId));
@@ -72,10 +84,10 @@ export class TerrainGenerator {
     for (let lz = 0; lz < this.chunkSize; lz++) {
       for (let lx = 0; lx < this.chunkSize; lx++) {
         const columnIndex = lx + lz * this.chunkSize;
-        const topY = heightMap[columnIndex];
+        const topY = heightMap[columnIndex] ?? 0;
         const worldX = baseX + lx;
         const worldZ = baseZ + lz;
-        const biomeId = biomeMap[columnIndex];
+        const biomeId = biomeMap[columnIndex] ?? this.biomeModel.getBiomeId(worldX, worldZ);
         const slope = calculateColumnSlope(
           heightMap,
           this.chunkSize,
@@ -94,7 +106,7 @@ export class TerrainGenerator {
     storage.markChunkLoaded(cx, cz);
   }
 
-  createSpawnPoint() {
+  createSpawnPoint(): { x: number; y: number; z: number } {
     if (!this.seed) {
       const randomX = Math.floor((Math.random() - 0.5) * 1024);
       const randomZ = Math.floor((Math.random() - 0.5) * 1024);
@@ -105,7 +117,7 @@ export class TerrainGenerator {
     return { x: point.x, y: this.getHeight(point.x, point.z) + 4, z: point.z };
   }
 
-  getSeedDisplay() {
+  getSeedDisplay(): string {
     return this.seedDisplay;
   }
 }

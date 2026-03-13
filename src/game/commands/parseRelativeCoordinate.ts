@@ -1,4 +1,4 @@
-export function parseRelativeCoordinate(token, currentValue) {
+export function parseRelativeCoordinate(token: unknown, currentValue: number): number | null {
   const normalized = String(token ?? '').trim();
   if (!normalized) return null;
 

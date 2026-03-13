@@ -1,14 +1,33 @@
 import { createGreedyChunkGeometry } from './meshing/createGreedyChunkGeometry';
+import type { VoxelStorage } from './VoxelStorage';
+import type * as THREE from 'three';
+
+type LightSource = { x: number; y: number; z: number };
+type MaskBuffers = { types: Uint8Array; signs: Int8Array };
 
 export class VoxelChunkMesher {
-  constructor(chunkSize, maxHeight, lightSourceProvider = null) {
+  chunkSize: number;
+  maxHeight: number;
+  maskPool: Map<number, MaskBuffers>;
+  lightSourceProvider: ((cx: number, cz: number) => LightSource[]) | null;
+
+  constructor(
+    chunkSize: number,
+    maxHeight: number,
+    lightSourceProvider: ((cx: number, cz: number) => LightSource[]) | null = null
+  ) {
     this.chunkSize = chunkSize;
     this.maxHeight = maxHeight;
     this.maskPool = new Map();
     this.lightSourceProvider = lightSourceProvider;
   }
 
-  createChunkGeometry(storage, cx, cz, lodStep) {
+  createChunkGeometry(
+    storage: VoxelStorage,
+    cx: number,
+    cz: number,
+    lodStep: number
+  ): THREE.BufferGeometry | null {
     return createGreedyChunkGeometry({
       storage,
       cx,

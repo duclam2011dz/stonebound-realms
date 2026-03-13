@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { VoxelStorage } from '../VoxelStorage';
 import { BLOCK_ATLAS, BLOCK_FACE_TILES } from '../../../config/constants';
 import {
   BLOCK_ID_AIR,
@@ -11,18 +12,32 @@ import {
   BLOCK_ID_LAMP
 } from '../BlockPalette';
 
+type BlockTile = { x: number; y: number };
+type LightSource = { x: number; y: number; z: number };
+type LightSample = { sky: number; block: number };
+type MaskBuffers = { types: Uint8Array; signs: Int8Array };
+type QuadBuffers = {
+  positions: number[];
+  normals: number[];
+  uvs: number[];
+  lightmaps: number[];
+  indices: number[];
+  vertexCount: number;
+};
+
 const FACE_UV_EPSILON = 0.0001;
 const AXIS_TO_UV_AXES = [
   { uAxis: 2, vAxis: 1 },
   { uAxis: 0, vAxis: 2 },
   { uAxis: 0, vAxis: 1 }
-];
+] as const;
+const AXES = [0, 1, 2] as const;
 const CROSS_SIGNS = [-1, -1, 1];
 const TILE_U_SIZE = 1 / BLOCK_ATLAS.columns;
 const TILE_V_SIZE = 1 / BLOCK_ATLAS.rows;
 const MAX_BLOCK_LIGHT = 15;
 
-function getFaceTile(blockId, axis, sign) {
+function getFaceTile(blockId: number, axis: number, sign: number): BlockTile {
   if (blockId === BLOCK_ID_GRASS) {
     if (axis === 1 && sign > 0) return BLOCK_FACE_TILES.grass.top;
     if (axis === 1 && sign < 0) return BLOCK_FACE_TILES.grass.bottom;
@@ -37,14 +52,26 @@ function getFaceTile(blockId, axis, sign) {
   return BLOCK_FACE_TILES.dirt.all;
 }
 
-function getSkyHeightForColumn(storage, worldX, worldZ, maxHeight) {
+function getSkyHeightForColumn(
+  storage: VoxelStorage,
+  worldX: number,
+  worldZ: number,
+  maxHeight: number
+): number {
   for (let y = maxHeight - 1; y >= 0; y--) {
     if (storage.getBlockId(worldX, y, worldZ) !== BLOCK_ID_AIR) return y;
   }
   return -1;
 }
 
-function buildSkyHeights(storage, baseX, baseZ, chunkSize, maxHeight, chunkData = null) {
+function buildSkyHeights(
+  storage: VoxelStorage,
+  baseX: number,
+  baseZ: number,
+  chunkSize: number,
+  maxHeight: number,
+  chunkData: Uint8Array | null = null
+): Int16Array {
   const heights = new Int16Array(chunkSize * chunkSize);
   heights.fill(-1);
   for (let z = 0; z < chunkSize; z++) {
@@ -55,7 +82,7 @@ function buildSkyHeights(storage, baseX, baseZ, chunkSize, maxHeight, chunkData 
         let height = -1;
         const columnBase = x + z * chunkSize * maxHeight;
         for (let y = maxHeight - 1; y >= 0; y--) {
-          if (chunkData[columnBase + y * chunkSize] !== BLOCK_ID_AIR) {
+          if ((chunkData[columnBase + y * chunkSize] ?? BLOCK_ID_AIR) !== BLOCK_ID_AIR) {
             height = y;
             break;
           }
@@ -69,26 +96,35 @@ function buildSkyHeights(storage, baseX, baseZ, chunkSize, maxHeight, chunkData 
   return heights;
 }
 
-function getSkyHeightAt(heights, baseX, baseZ, chunkSize, maxHeight, storage, worldX, worldZ) {
+function getSkyHeightAt(
+  heights: Int16Array,
+  baseX: number,
+  baseZ: number,
+  chunkSize: number,
+  maxHeight: number,
+  storage: VoxelStorage,
+  worldX: number,
+  worldZ: number
+): number {
   const localX = worldX - baseX;
   const localZ = worldZ - baseZ;
   if (localX >= 0 && localX < chunkSize && localZ >= 0 && localZ < chunkSize) {
-    return heights[localX + localZ * chunkSize];
+    return heights[localX + localZ * chunkSize] ?? -1;
   }
   return getSkyHeightForColumn(storage, worldX, worldZ, maxHeight);
 }
 
 function computeSkyLight(
-  heights,
-  baseX,
-  baseZ,
-  chunkSize,
-  maxHeight,
-  storage,
-  worldX,
-  worldY,
-  worldZ
-) {
+  heights: Int16Array,
+  baseX: number,
+  baseZ: number,
+  chunkSize: number,
+  maxHeight: number,
+  storage: VoxelStorage,
+  worldX: number,
+  worldY: number,
+  worldZ: number
+): number {
   const skyHeight = getSkyHeightAt(
     heights,
     baseX,
@@ -106,7 +142,16 @@ function computeSkyLight(
   return 1;
 }
 
-function buildBlockLightGrid(lightSources, getCell, baseX, baseZ, lodStep, sizeX, sizeY, sizeZ) {
+function buildBlockLightGrid(
+  lightSources: LightSource[],
+  getCell: (x: number, y: number, z: number) => number,
+  baseX: number,
+  baseZ: number,
+  lodStep: number,
+  sizeX: number,
+  sizeY: number,
+  sizeZ: number
+): Uint8Array | null {
   if (!lightSources.length) return null;
 
   const volume = sizeX * sizeY * sizeZ;
@@ -115,7 +160,7 @@ function buildBlockLightGrid(lightSources, getCell, baseX, baseZ, lodStep, sizeX
   let head = 0;
   let tail = 0;
 
-  const pushToQueue = (x, y, z) => {
+  const pushToQueue = (x: number, y: number, z: number) => {
     if (tail + 3 > queue.length) {
       const expanded = new Int32Array(queue.length * 2);
       expanded.set(queue);
@@ -126,11 +171,11 @@ function buildBlockLightGrid(lightSources, getCell, baseX, baseZ, lodStep, sizeX
     queue[tail++] = z;
   };
 
-  const pushSeed = (x, y, z, level) => {
+  const pushSeed = (x: number, y: number, z: number, level: number) => {
     if (level <= 0) return;
     if (x < 0 || x >= sizeX || y < 0 || y >= sizeY || z < 0 || z >= sizeZ) return;
     const idx = x + y * sizeX + z * sizeX * sizeY;
-    if (level <= light[idx]) return;
+    if (level <= (light[idx] ?? 0)) return;
     light[idx] = level;
     pushToQueue(x, y, z);
   };
@@ -151,19 +196,19 @@ function buildBlockLightGrid(lightSources, getCell, baseX, baseZ, lodStep, sizeX
   }
 
   while (head < tail) {
-    const x = queue[head++];
-    const y = queue[head++];
-    const z = queue[head++];
+    const x = queue[head++] ?? 0;
+    const y = queue[head++] ?? 0;
+    const z = queue[head++] ?? 0;
     const idx = x + y * sizeX + z * sizeX * sizeY;
-    const level = light[idx];
+    const level = light[idx] ?? 0;
     if (level <= 1) continue;
 
     const nextLevel = level - 1;
-    const tryPush = (nx, ny, nz) => {
+    const tryPush = (nx: number, ny: number, nz: number) => {
       if (nx < 0 || nx >= sizeX || ny < 0 || ny >= sizeY || nz < 0 || nz >= sizeZ) return;
       if (getCell(nx, ny, nz) !== BLOCK_ID_AIR) return;
       const nIdx = nx + ny * sizeX + nz * sizeX * sizeY;
-      if (nextLevel <= light[nIdx]) return;
+      if (nextLevel <= (light[nIdx] ?? 0)) return;
       light[nIdx] = nextLevel;
       pushToQueue(nx, ny, nz);
     };
@@ -178,7 +223,14 @@ function buildBlockLightGrid(lightSources, getCell, baseX, baseZ, lodStep, sizeX
   return light;
 }
 
-function sampleLodCell(storage, startX, startY, startZ, lodStep, maxHeight) {
+function sampleLodCell(
+  storage: VoxelStorage,
+  startX: number,
+  startY: number,
+  startZ: number,
+  lodStep: number,
+  maxHeight: number
+): number {
   for (let oy = 0; oy < lodStep; oy++) {
     const y = startY + oy;
     if (y < 0 || y >= maxHeight) continue;
@@ -193,17 +245,17 @@ function sampleLodCell(storage, startX, startY, startZ, lodStep, maxHeight) {
 }
 
 function fillChunkCells(
-  cells,
-  storage,
-  cx,
-  cz,
-  lodStep,
-  chunkSize,
-  maxHeight,
-  sizeX,
-  sizeY,
-  sizeZ
-) {
+  cells: Uint8Array,
+  storage: VoxelStorage,
+  cx: number,
+  cz: number,
+  lodStep: number,
+  chunkSize: number,
+  maxHeight: number,
+  sizeX: number,
+  sizeY: number,
+  sizeZ: number
+): void {
   if (lodStep === 1) {
     const chunkData = storage.getChunkData(cx, cz);
     if (chunkData) cells.set(chunkData);
@@ -225,7 +277,27 @@ function fillChunkCells(
   }
 }
 
-function appendSubQuad(buffers, quad, axis, sign, uv, light) {
+function appendSubQuad(
+  buffers: QuadBuffers,
+  quad: {
+    ax: number;
+    ay: number;
+    az: number;
+    bx: number;
+    by: number;
+    bz: number;
+    cx: number;
+    cy: number;
+    cz: number;
+    dx: number;
+    dy: number;
+    dz: number;
+  },
+  axis: number,
+  sign: number,
+  uv: { u0: number; u1: number; v0: number; v1: number },
+  light: LightSample
+): void {
   const { ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz } = quad;
   const { u0, u1, v0, v1 } = uv;
   const { positions, normals, uvs, indices, lightmaps } = buffers;
@@ -259,7 +331,26 @@ function appendSubQuad(buffers, quad, axis, sign, uv, light) {
   buffers.vertexCount += 4;
 }
 
-function appendTiledQuad(buffers, quadData, light) {
+function appendTiledQuad(
+  buffers: QuadBuffers,
+  quadData: {
+    p0x: number;
+    p0y: number;
+    p0z: number;
+    p1x: number;
+    p1y: number;
+    p1z: number;
+    p3x: number;
+    p3y: number;
+    p3z: number;
+    width: number;
+    height: number;
+    axis: number;
+    sign: number;
+    tile: BlockTile;
+  },
+  light: LightSample
+): void {
   const { p0x, p0y, p0z, p1x, p1y, p1z, p3x, p3y, p3z, width, height, axis, sign, tile } = quadData;
 
   const uv = {
@@ -319,7 +410,7 @@ function appendTiledQuad(buffers, quadData, light) {
   }
 }
 
-function getMaskBuffers(maskPool, maskSize) {
+function getMaskBuffers(maskPool: Map<number, MaskBuffers>, maskSize: number): MaskBuffers {
   let buffers = maskPool.get(maskSize);
   if (!buffers) {
     buffers = {
@@ -340,11 +431,20 @@ export function createGreedyChunkGeometry({
   maxHeight,
   maskPool,
   lightSources = []
-}) {
+}: {
+  storage: VoxelStorage;
+  cx: number;
+  cz: number;
+  lodStep: number;
+  chunkSize: number;
+  maxHeight: number;
+  maskPool: Map<number, MaskBuffers>;
+  lightSources?: LightSource[];
+}): THREE.BufferGeometry | null {
   const sizeX = Math.max(1, Math.floor(chunkSize / lodStep));
   const sizeY = Math.max(1, Math.floor(maxHeight / lodStep));
   const sizeZ = Math.max(1, Math.floor(chunkSize / lodStep));
-  const dimensions = [sizeX, sizeY, sizeZ];
+  const dimensions: [number, number, number] = [sizeX, sizeY, sizeZ];
   const baseX = cx * chunkSize;
   const baseZ = cz * chunkSize;
 
@@ -354,10 +454,10 @@ export function createGreedyChunkGeometry({
   const chunkData = storage.getChunkData(cx, cz);
   const skyHeights = buildSkyHeights(storage, baseX, baseZ, chunkSize, maxHeight, chunkData);
 
-  const getCell = (x, y, z) => {
+  const getCell = (x: number, y: number, z: number): number => {
     if (y < 0 || y >= sizeY) return BLOCK_ID_AIR;
     if (x >= 0 && x < sizeX && z >= 0 && z < sizeZ) {
-      return cells[x + y * sizeX + z * sizeX * sizeY];
+      return cells[x + y * sizeX + z * sizeX * sizeY] ?? BLOCK_ID_AIR;
     }
     return sampleLodCell(
       storage,
@@ -378,16 +478,17 @@ export function createGreedyChunkGeometry({
     sizeY,
     sizeZ
   );
-  const sampleBlockLight = (worldX, worldY, worldZ) => {
+  const sampleBlockLight = (worldX: number, worldY: number, worldZ: number): number => {
     if (!blockLightGrid) return 0;
     const lx = Math.floor((worldX - baseX) / lodStep);
     const ly = Math.floor(worldY / lodStep);
     const lz = Math.floor((worldZ - baseZ) / lodStep);
     if (lx < 0 || lx >= sizeX || ly < 0 || ly >= sizeY || lz < 0 || lz >= sizeZ) return 0;
-    return blockLightGrid[lx + ly * sizeX + lz * sizeX * sizeY] / MAX_BLOCK_LIGHT;
+    const level = blockLightGrid[lx + ly * sizeX + lz * sizeX * sizeY] ?? 0;
+    return level / MAX_BLOCK_LIGHT;
   };
 
-  const buffers = {
+  const buffers: QuadBuffers = {
     positions: [],
     normals: [],
     uvs: [],
@@ -396,15 +497,15 @@ export function createGreedyChunkGeometry({
     vertexCount: 0
   };
 
-  for (let axis = 0; axis < 3; axis++) {
+  for (const axis of AXES) {
     const { uAxis, vAxis } = AXIS_TO_UV_AXES[axis];
     const maskWidth = dimensions[uAxis];
     const maskHeight = dimensions[vAxis];
     const maskSize = maskWidth * maskHeight;
     const { types: maskTypes, signs: maskSigns } = getMaskBuffers(maskPool, maskSize);
 
-    const x = [0, 0, 0];
-    const q = [0, 0, 0];
+    const x: [number, number, number] = [0, 0, 0];
+    const q: [number, number, number] = [0, 0, 0];
     q[axis] = 1;
 
     for (x[axis] = -1; x[axis] < dimensions[axis]; ) {
@@ -434,13 +535,13 @@ export function createGreedyChunkGeometry({
       n = 0;
       for (let j = 0; j < dimensions[vAxis]; j++) {
         for (let i = 0; i < dimensions[uAxis]; ) {
-          const currentType = maskTypes[n];
+          const currentType = maskTypes[n] ?? BLOCK_ID_AIR;
           if (currentType === BLOCK_ID_AIR) {
             i += 1;
             n += 1;
             continue;
           }
-          const currentSign = maskSigns[n];
+          const currentSign = maskSigns[n] ?? 0;
 
           let width = 1;
           while (
@@ -467,8 +568,8 @@ export function createGreedyChunkGeometry({
           x[uAxis] = i;
           x[vAxis] = j;
 
-          const du = [0, 0, 0];
-          const dv = [0, 0, 0];
+          const du: [number, number, number] = [0, 0, 0];
+          const dv: [number, number, number] = [0, 0, 0];
           du[uAxis] = width;
           dv[vAxis] = height;
 

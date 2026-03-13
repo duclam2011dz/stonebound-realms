@@ -1,8 +1,8 @@
 import { getGameSession, saveGameSession } from '../../app/storage/gameSessionStorage';
 
 const session = getGameSession();
-const worldNameInput = document.getElementById('worldNameInput');
-const seedInput = document.getElementById('seedInput');
+const worldNameInput = document.getElementById('worldNameInput') as HTMLInputElement | null;
+const seedInput = document.getElementById('seedInput') as HTMLInputElement | null;
 const startButton = document.getElementById('startWorldButton');
 const backButton = document.getElementById('backToMenuButton');
 

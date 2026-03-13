@@ -1,4 +1,15 @@
-const SETTING_FIELDS = [
+import type { GameSettings } from '../config/constants';
+
+type SettingField = {
+  key: keyof GameSettings;
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+  precision: number;
+};
+
+const SETTING_FIELDS: SettingField[] = [
   { key: 'renderDistance', label: 'Render Distance', min: 1, max: 12, step: 1, precision: 0 },
   { key: 'lodStartDistance', label: 'LOD Start Ring', min: 1, max: 12, step: 1, precision: 0 },
   { key: 'moveSpeed', label: 'Move Speed', min: 1, max: 20, step: 0.5, precision: 1 },
@@ -21,7 +32,18 @@ const SETTING_FIELDS = [
 ];
 
 export class MenuUI {
-  constructor(settings) {
+  settings: GameSettings;
+  playListeners: Array<() => void>;
+  settingsListeners: Array<(settings: Partial<GameSettings>) => void>;
+  overlay: HTMLElement | null;
+  menuMain: HTMLElement | null;
+  settingsPanel: HTMLElement | null;
+  playButton: HTMLElement | null;
+  settingsButton: HTMLElement | null;
+  backButton: HTMLElement | null;
+  settingsFieldsRoot: HTMLElement | null;
+
+  constructor(settings: GameSettings) {
     this.settings = settings;
     this.playListeners = [];
     this.settingsListeners = [];
@@ -38,7 +60,7 @@ export class MenuUI {
     this.bindEvents();
   }
 
-  bindEvents() {
+  bindEvents(): void {
     this.playButton?.addEventListener('click', () => {
       this.hide();
       for (const callback of this.playListeners) callback();
@@ -53,7 +75,7 @@ export class MenuUI {
     });
   }
 
-  renderFields() {
+  renderFields(): void {
     if (!this.settingsFieldsRoot) return;
     this.settingsFieldsRoot.innerHTML = '';
 
@@ -81,7 +103,7 @@ export class MenuUI {
 
       input.addEventListener('input', () => {
         const parsed = Number(input.value);
-        const nextSettings = { [field.key]: parsed };
+        const nextSettings: Partial<GameSettings> = { [field.key]: parsed };
         value.textContent = parsed.toFixed(field.precision);
         for (const callback of this.settingsListeners) {
           callback(nextSettings);
@@ -96,28 +118,28 @@ export class MenuUI {
     }
   }
 
-  onPlay(callback) {
+  onPlay(callback: () => void): void {
     this.playListeners.push(callback);
   }
 
-  onSettingsChange(callback) {
+  onSettingsChange(callback: (settings: Partial<GameSettings>) => void): void {
     this.settingsListeners.push(callback);
   }
 
-  show() {
+  show(): void {
     this.overlay?.classList.add('is-visible');
   }
 
-  hide() {
+  hide(): void {
     this.overlay?.classList.remove('is-visible');
   }
 
-  openSettings() {
+  openSettings(): void {
     this.menuMain?.classList.add('is-hidden');
     this.settingsPanel?.classList.remove('is-hidden');
   }
 
-  openMain() {
+  openMain(): void {
     this.settingsPanel?.classList.add('is-hidden');
     this.menuMain?.classList.remove('is-hidden');
   }

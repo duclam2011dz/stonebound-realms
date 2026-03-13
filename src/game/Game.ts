@@ -1,4 +1,5 @@
-import { CHUNK_SIZE, DEFAULT_SETTINGS } from '../config/constants';
+import type * as THREE from 'three';
+import { CHUNK_SIZE, DEFAULT_SETTINGS, type GameSettings } from '../config/constants';
 import { InputController } from '../core/InputController';
 import { RenderContext } from '../core/RenderContext';
 import { COMPONENT_PHYSICS, COMPONENT_TRANSFORM } from '../ecs/components';
@@ -7,7 +8,7 @@ import { InventoryState } from '../inventory/InventoryState';
 import { InventoryUI } from '../inventory/InventoryUI';
 import { createInitialInventorySlots } from './factories/createInitialInventorySlots';
 import { createPlayerEntity } from './factories/createPlayerEntity';
-import { createSystems } from './factories/createSystems';
+import { createSystems, type GameSystems } from './factories/createSystems';
 import { SystemOrchestrator } from './SystemOrchestrator';
 import { Hotbar } from '../ui/Hotbar';
 import { Hud } from '../ui/Hud';
@@ -15,8 +16,35 @@ import { ChatOverlay } from '../ui/chat/ChatOverlay';
 import { GameCommandService } from './commands/GameCommandService';
 import { VoxelWorld } from '../world/VoxelWorld';
 
+type GameConfig = {
+  settings?: Partial<GameSettings>;
+  worldName?: string;
+  seed?: string;
+};
+
 export class Game {
-  constructor(config = {}) {
+  settings: GameSettings;
+  worldConfig: { worldName: string; seed: string };
+  lastTime: number;
+  virtualNow: number;
+  appliedRenderDistance: number;
+  chatInputOpen: boolean;
+  inventoryOpen: boolean;
+  renderContext: RenderContext;
+  input: InputController;
+  hud: Hud;
+  inventoryState: InventoryState;
+  hotbar: Hotbar;
+  inventoryUI: InventoryUI;
+  ecs: ECSWorld;
+  world: VoxelWorld;
+  playerEntityId: number;
+  systems: GameSystems;
+  orchestrator: SystemOrchestrator;
+  commandService: GameCommandService;
+  chat: ChatOverlay;
+
+  constructor(config: GameConfig = {}) {
     this.settings = { ...DEFAULT_SETTINGS, ...(config.settings ?? {}) };
     this.worldConfig = {
       worldName: config.worldName ?? '',
@@ -78,7 +106,7 @@ export class Game {
       rootElement: document.getElementById('chatRoot'),
       logElement: document.getElementById('chatLog'),
       inputRowElement: document.getElementById('chatInputRow'),
-      inputElement: document.getElementById('chatInput'),
+      inputElement: document.getElementById('chatInput') as HTMLInputElement | null,
       getSeed: () => this.world.getSeedString(),
       onHelpToggle: (isEnabled) => this.hud.setHelpEnabled(isEnabled),
       onCommand: (rawText) => this.commandService.execute(rawText),
@@ -94,9 +122,9 @@ export class Game {
     this.syncInputCapture();
   }
 
-  bindEvents() {
+  bindEvents(): void {
     window.addEventListener('resize', () => this.renderContext.resize());
-    window.addEventListener('keydown', (event) => {
+    window.addEventListener('keydown', (event: KeyboardEvent) => {
       if (event.code !== 'KeyE' || event.repeat) return;
       const isTyping = document.activeElement instanceof HTMLInputElement;
       if (isTyping) return;
@@ -108,12 +136,12 @@ export class Game {
     this.input.addHotbarSelectionListener((selectedSlot) => this.hotbar.setSelected(selectedSlot));
   }
 
-  syncInputCapture() {
+  syncInputCapture(): void {
     const canCapture = !this.chatInputOpen && !this.inventoryOpen;
     this.input.setCaptureEnabled(canCapture);
   }
 
-  toggleInventory() {
+  toggleInventory(): void {
     this.inventoryOpen = !this.inventoryOpen;
     this.inventoryUI.setOpen(this.inventoryOpen);
     if (this.inventoryOpen) {
@@ -122,34 +150,37 @@ export class Game {
     this.syncInputCapture();
   }
 
-  syncRenderDistanceView() {
+  syncRenderDistanceView(): void {
     if (this.appliedRenderDistance === this.settings.renderDistance) return;
     this.appliedRenderDistance = this.settings.renderDistance;
     this.renderContext.applyRenderDistance(this.settings.renderDistance, CHUNK_SIZE);
   }
 
-  initializePlayerSpawn() {
+  initializePlayerSpawn(): void {
     const spawn = this.world.getSpawnPoint();
-    const transform = this.ecs.getComponent(this.playerEntityId, COMPONENT_TRANSFORM);
+    const transform = this.ecs.getComponent<{ position: THREE.Vector3 }>(
+      this.playerEntityId,
+      COMPONENT_TRANSFORM
+    );
     if (!transform) return;
     transform.position.set(spawn.x + 0.5, spawn.y, spawn.z + 0.5);
   }
 
-  bindDebugHooks() {
+  bindDebugHooks(): void {
     window.__game = this;
     window.render_game_to_text = () => this.renderGameToText();
     window.advanceTime = (ms = 16.67) => this.advanceTime(ms);
     window.execute_game_command = (text) => this.commandService.execute(String(text ?? ''));
   }
 
-  runFrame(dt, nowMs) {
+  runFrame(dt: number, nowMs: number): void {
     this.syncRenderDistanceView();
     this.orchestrator.runPlayingFrame(dt);
     this.chat.updateFrame(nowMs, dt);
     this.renderContext.render();
   }
 
-  advanceTime(ms) {
+  advanceTime(ms: number): void {
     const clampedMs = Math.max(1, Number(ms) || 16.67);
     const stepCount = Math.max(1, Math.round(clampedMs / (1000 / 60)));
     const dt = clampedMs / 1000 / stepCount;
@@ -159,9 +190,16 @@ export class Game {
     }
   }
 
-  renderGameToText() {
-    const transform = this.ecs.getComponent(this.playerEntityId, COMPONENT_TRANSFORM);
-    const physics = this.ecs.getComponent(this.playerEntityId, COMPONENT_PHYSICS);
+  renderGameToText(): string {
+    const transform = this.ecs.getComponent<{
+      position: THREE.Vector3;
+      yaw: number;
+      pitch: number;
+    }>(this.playerEntityId, COMPONENT_TRANSFORM);
+    const physics = this.ecs.getComponent<{ velocity: THREE.Vector3; onGround: boolean }>(
+      this.playerEntityId,
+      COMPONENT_PHYSICS
+    );
     const target = this.systems.targeting.getCurrentHit()?.block ?? null;
     const payload = {
       mode: 'playing',
@@ -202,17 +240,21 @@ export class Game {
     return JSON.stringify(payload);
   }
 
-  start() {
+  start(): void {
     this.syncRenderDistanceView();
     this.initializePlayerSpawn();
-    const transform = this.ecs.getComponent(this.playerEntityId, COMPONENT_TRANSFORM);
+    const transform = this.ecs.getComponent<{ position: THREE.Vector3 }>(
+      this.playerEntityId,
+      COMPONENT_TRANSFORM
+    );
+    if (!transform) return;
     this.systems.chunks.force(transform.position);
     this.systems.camera.update(this.ecs, this.playerEntityId, this.renderContext.camera);
     this.virtualNow = this.lastTime;
     requestAnimationFrame((now) => this.tick(now));
   }
 
-  tick(now) {
+  tick(now: number): void {
     const dt = Math.min((now - this.lastTime) / 1000, 0.05);
     this.lastTime = now;
     this.virtualNow = now;

@@ -1,18 +1,24 @@
+import type { SeededNoise } from '../../noise/SeededNoise';
+import type { VoxelStorage } from '../VoxelStorage';
 import { BLOCK_ID_AIR } from '../BlockPalette';
 import { coordHash } from './terrainHash';
 
 const TAU = Math.PI * 2;
 const REGION_SIZE = 64;
 
-function clamp(value, min, max) {
+type Bounds = { minX: number; maxX: number; minZ: number; maxZ: number };
+type SurfaceSampler = (x: number, z: number) => number;
+type Rng = () => number;
+
+function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-function floorDiv(n, d) {
+function floorDiv(n: number, d: number): number {
   return Math.floor(n / d);
 }
 
-function createRng(seed) {
+function createRng(seed: number): Rng {
   let state = seed >>> 0 || 1;
   return () => {
     state ^= state << 13;
@@ -23,14 +29,19 @@ function createRng(seed) {
 }
 
 export class CaveCarver {
-  constructor(noise, maxHeight, chunkSize, seedInt) {
+  noise: SeededNoise;
+  maxHeight: number;
+  chunkSize: number;
+  seedInt: number;
+
+  constructor(noise: SeededNoise, maxHeight: number, chunkSize: number, seedInt: number) {
     this.noise = noise;
     this.maxHeight = maxHeight;
     this.chunkSize = chunkSize;
     this.seedInt = seedInt >>> 0;
   }
 
-  carveChunk(storage, cx, cz, getSurfaceY) {
+  carveChunk(storage: VoxelStorage, cx: number, cz: number, getSurfaceY: SurfaceSampler): void {
     const chunkMinX = cx * this.chunkSize;
     const chunkMinZ = cz * this.chunkSize;
     const chunkMaxX = chunkMinX + this.chunkSize - 1;
@@ -43,8 +54,8 @@ export class CaveCarver {
       maxZ: chunkMaxZ + influenceMargin
     };
 
-    const surfaceCache = new Map();
-    const getSurfaceYCached = (x, z) => {
+    const surfaceCache = new Map<string, number>();
+    const getSurfaceYCached = (x: number, z: number) => {
       const key = `${x}|${z}`;
       const cached = surfaceCache.get(key);
       if (cached !== undefined) return cached;
@@ -65,7 +76,13 @@ export class CaveCarver {
     }
   }
 
-  carveRegionWorms(storage, regionX, regionZ, bounds, getSurfaceY) {
+  carveRegionWorms(
+    storage: VoxelStorage,
+    regionX: number,
+    regionZ: number,
+    bounds: Bounds,
+    getSurfaceY: SurfaceSampler
+  ): void {
     const regionSeed = coordHash(this.seedInt ^ 0x9e3779b9, regionX, regionZ);
     const rng = createRng(regionSeed);
     const wormCount = 2 + Math.floor(rng() * 3);
@@ -98,18 +115,18 @@ export class CaveCarver {
   }
 
   carveWorm(
-    storage,
-    startX,
-    startY,
-    startZ,
-    startYaw,
-    startPitch,
-    segmentCount,
-    baseRadius,
-    rng,
-    bounds,
-    getSurfaceY
-  ) {
+    storage: VoxelStorage,
+    startX: number,
+    startY: number,
+    startZ: number,
+    startYaw: number,
+    startPitch: number,
+    segmentCount: number,
+    baseRadius: number,
+    rng: Rng,
+    bounds: Bounds,
+    getSurfaceY: SurfaceSampler
+  ): void {
     let x = startX;
     let y = startY;
     let z = startZ;
@@ -142,16 +159,16 @@ export class CaveCarver {
   }
 
   carveEllipsoid(
-    storage,
-    centerX,
-    centerY,
-    centerZ,
-    radiusX,
-    radiusY,
-    radiusZ,
-    bounds,
-    getSurfaceY
-  ) {
+    storage: VoxelStorage,
+    centerX: number,
+    centerY: number,
+    centerZ: number,
+    radiusX: number,
+    radiusY: number,
+    radiusZ: number,
+    bounds: Bounds,
+    getSurfaceY: SurfaceSampler
+  ): void {
     const minX = Math.floor(centerX - radiusX);
     const maxX = Math.floor(centerX + radiusX);
     const minY = Math.max(4, Math.floor(centerY - radiusY));

@@ -1,11 +1,14 @@
+import type { SeededNoise } from '../../noise/SeededNoise';
 import { BIOME_DESERT, BIOME_FOREST, BIOME_HILL, BIOME_PLAIN, biomeIdToName } from './biomeTypes';
 
 export class BiomeModel {
-  constructor(noise) {
+  noise: SeededNoise;
+
+  constructor(noise: SeededNoise) {
     this.noise = noise;
   }
 
-  getBiomeId(x, z) {
+  getBiomeId(x: number, z: number): number {
     const biomeWave = this.noise.fractalSimplex2D(
       x * 0.00145 + 90,
       z * 0.00145 - 150,
@@ -27,11 +30,11 @@ export class BiomeModel {
     return BIOME_FOREST;
   }
 
-  getBiomeName(x, z) {
+  getBiomeName(x: number, z: number): string {
     return biomeIdToName(this.getBiomeId(x, z));
   }
 
-  buildBiomeMap(baseX, baseZ, chunkSize) {
+  buildBiomeMap(baseX: number, baseZ: number, chunkSize: number): Uint8Array {
     const biomeMap = new Uint8Array(chunkSize * chunkSize);
     for (let lz = 0; lz < chunkSize; lz++) {
       for (let lx = 0; lx < chunkSize; lx++) {

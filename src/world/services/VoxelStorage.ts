@@ -1,7 +1,14 @@
-import { BLOCK_ID_AIR, blockIdToType, blockTypeToId } from './BlockPalette';
+import { BLOCK_ID_AIR, blockIdToType, blockTypeToId, type BlockType } from './BlockPalette';
 
 export class VoxelStorage {
-  constructor(chunkSize, maxHeight) {
+  chunkSize: number;
+  maxHeight: number;
+  chunkVolume: number;
+  chunkData: Map<string, Uint8Array>;
+  pendingChunkWrites: Map<string, Map<number, number>>;
+  loadedChunks: Set<string>;
+
+  constructor(chunkSize: number, maxHeight: number) {
     this.chunkSize = chunkSize;
     this.maxHeight = maxHeight;
     this.chunkVolume = chunkSize * maxHeight * chunkSize;
@@ -10,11 +17,11 @@ export class VoxelStorage {
     this.loadedChunks = new Set();
   }
 
-  chunkKey(cx, cz) {
+  chunkKey(cx: number, cz: number): string {
     return `${cx},${cz}`;
   }
 
-  parseChunkKey(key) {
+  parseChunkKey(key: string): { cx: number; cz: number } {
     const commaIndex = key.indexOf(',');
     return {
       cx: Number(key.slice(0, commaIndex)),
@@ -22,23 +29,23 @@ export class VoxelStorage {
     };
   }
 
-  floorDiv(n, d) {
+  floorDiv(n: number, d: number): number {
     return Math.floor(n / d);
   }
 
-  toLocalCoord(worldCoord, chunkCoord) {
+  toLocalCoord(worldCoord: number, chunkCoord: number): number {
     return worldCoord - chunkCoord * this.chunkSize;
   }
 
-  getVoxelIndex(localX, y, localZ) {
+  getVoxelIndex(localX: number, y: number, localZ: number): number {
     return localX + y * this.chunkSize + localZ * this.chunkSize * this.maxHeight;
   }
 
-  getChunkData(cx, cz) {
+  getChunkData(cx: number, cz: number): Uint8Array | null {
     return this.chunkData.get(this.chunkKey(cx, cz)) ?? null;
   }
 
-  ensureChunkData(cx, cz) {
+  ensureChunkData(cx: number, cz: number): Uint8Array {
     const cKey = this.chunkKey(cx, cz);
     let data = this.chunkData.get(cKey);
     if (!data) {
@@ -55,7 +62,7 @@ export class VoxelStorage {
     return data;
   }
 
-  getBlockId(x, y, z) {
+  getBlockId(x: number, y: number, z: number): number {
     if (y < 0 || y >= this.maxHeight) return BLOCK_ID_AIR;
     const cX = this.floorDiv(x, this.chunkSize);
     const cZ = this.floorDiv(z, this.chunkSize);
@@ -63,11 +70,11 @@ export class VoxelStorage {
     const localZ = this.toLocalCoord(z, cZ);
     const voxelIndex = this.getVoxelIndex(localX, y, localZ);
     const chunk = this.getChunkData(cX, cZ);
-    if (chunk) return chunk[voxelIndex];
+    if (chunk) return chunk[voxelIndex] ?? BLOCK_ID_AIR;
     return this.pendingChunkWrites.get(this.chunkKey(cX, cZ))?.get(voxelIndex) ?? BLOCK_ID_AIR;
   }
 
-  setBlockId(x, y, z, blockId) {
+  setBlockId(x: number, y: number, z: number, blockId: number): void {
     if (y < 0 || y >= this.maxHeight) return;
     const cX = this.floorDiv(x, this.chunkSize);
     const cZ = this.floorDiv(z, this.chunkSize);
@@ -98,7 +105,14 @@ export class VoxelStorage {
     pending.set(voxelIndex, blockId);
   }
 
-  setChunkLocalBlockId(cx, cz, localX, y, localZ, blockId) {
+  setChunkLocalBlockId(
+    cx: number,
+    cz: number,
+    localX: number,
+    y: number,
+    localZ: number,
+    blockId: number
+  ): void {
     if (y < 0 || y >= this.maxHeight) return;
     if (localX < 0 || localX >= this.chunkSize) return;
     if (localZ < 0 || localZ >= this.chunkSize) return;
@@ -106,32 +120,32 @@ export class VoxelStorage {
     chunk[this.getVoxelIndex(localX, y, localZ)] = blockId;
   }
 
-  isBlockFilled(x, y, z) {
+  isBlockFilled(x: number, y: number, z: number): boolean {
     return this.getBlockId(x, y, z) !== BLOCK_ID_AIR;
   }
 
-  getBlockAt(x, y, z) {
+  getBlockAt(x: number, y: number, z: number): BlockType | null {
     return blockIdToType(this.getBlockId(x, y, z));
   }
 
-  setBlock(x, y, z, type) {
+  setBlock(x: number, y: number, z: number, type: BlockType): void {
     const blockId = blockTypeToId(type);
     this.setBlockId(x, y, z, blockId);
   }
 
-  removeBlock(x, y, z) {
+  removeBlock(x: number, y: number, z: number): void {
     this.setBlockId(x, y, z, BLOCK_ID_AIR);
   }
 
-  markChunkLoaded(cx, cz) {
+  markChunkLoaded(cx: number, cz: number): void {
     this.loadedChunks.add(this.chunkKey(cx, cz));
   }
 
-  isChunkLoaded(cx, cz) {
+  isChunkLoaded(cx: number, cz: number): boolean {
     return this.loadedChunks.has(this.chunkKey(cx, cz));
   }
 
-  clearChunk(cx, cz) {
+  clearChunk(cx: number, cz: number): void {
     const cKey = this.chunkKey(cx, cz);
     this.chunkData.delete(cKey);
     this.pendingChunkWrites.delete(cKey);

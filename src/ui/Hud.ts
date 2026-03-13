@@ -1,5 +1,16 @@
 export class Hud {
-  constructor(helpElement, breakProgressRootElement = null, breakProgressFillElement = null) {
+  helpElement: HTMLElement | null;
+  breakProgressRootElement: HTMLElement | null;
+  breakProgressFillElement: HTMLElement | null;
+  helpEnabled: boolean;
+  contextVisible: boolean;
+  breakProgress: number;
+
+  constructor(
+    helpElement: HTMLElement | null,
+    breakProgressRootElement: HTMLElement | null = null,
+    breakProgressFillElement: HTMLElement | null = null
+  ) {
     this.helpElement = helpElement;
     this.breakProgressRootElement = breakProgressRootElement;
     this.breakProgressFillElement = breakProgressFillElement;
@@ -9,17 +20,17 @@ export class Hud {
     this.refresh();
   }
 
-  setContextVisible(isVisible) {
+  setContextVisible(isVisible: boolean): void {
     this.contextVisible = isVisible;
     this.refresh();
   }
 
-  setHelpEnabled(isEnabled) {
+  setHelpEnabled(isEnabled: boolean): void {
     this.helpEnabled = isEnabled;
     this.refresh();
   }
 
-  setBreakProgress(progress) {
+  setBreakProgress(progress: number): void {
     const normalized = Math.min(1, Math.max(0, Number(progress) || 0));
     this.breakProgress = normalized;
     if (this.breakProgressFillElement) {
@@ -30,7 +41,7 @@ export class Hud {
     }
   }
 
-  refresh() {
+  refresh(): void {
     if (!this.helpElement) return;
     const isVisible = this.helpEnabled && this.contextVisible;
     this.helpElement.classList.toggle('is-hidden', !isVisible);

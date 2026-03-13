@@ -1,4 +1,4 @@
-export function coordHash(seed, x, z) {
+export function coordHash(seed: number, x: number, z: number): number {
   let n = seed ^ Math.imul(x, 374761393) ^ Math.imul(z, 668265263);
   n = (n ^ (n >>> 13)) >>> 0;
   n = Math.imul(n, 1274126177) >>> 0;

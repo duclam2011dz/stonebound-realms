@@ -2,7 +2,12 @@ import { colorToCss } from '../../shared/color';
 import { drawNoiseTile } from '../../shared/drawNoiseTile';
 import { lcg } from '../../shared/random';
 
-export function drawGrassTopTile(ctx, tileX, tileY, tileSize) {
+export function drawGrassTopTile(
+  ctx: CanvasRenderingContext2D,
+  tileX: number,
+  tileY: number,
+  tileSize: number
+): void {
   drawNoiseTile(ctx, tileX, tileY, tileSize, [88, 163, 61], 101, 26);
   const startX = tileX * tileSize;
   const startY = tileY * tileSize;

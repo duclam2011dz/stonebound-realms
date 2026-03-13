@@ -9,9 +9,15 @@ import {
   createPhysics,
   createTransform
 } from '../../ecs/components';
-import { EYE_HEIGHT, PLAYER_HEIGHT, PLAYER_RADIUS } from '../../config/constants';
+import {
+  EYE_HEIGHT,
+  PLAYER_HEIGHT,
+  PLAYER_RADIUS,
+  type GameSettings
+} from '../../config/constants';
+import type { ECSWorld } from '../../ecs/ECSWorld';
 
-export function createPlayerEntity(ecs, settings) {
+export function createPlayerEntity(ecs: ECSWorld, settings: GameSettings): number {
   const entityId = ecs.createEntity();
   ecs.addComponent(entityId, COMPONENT_TRANSFORM, createTransform(new THREE.Vector3(0, 20, 0)));
   ecs.addComponent(

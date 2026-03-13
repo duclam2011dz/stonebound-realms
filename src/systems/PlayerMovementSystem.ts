@@ -13,9 +13,27 @@ import {
   applyLook,
   buildMovementVector
 } from './movement/movementMath';
+import type { ECSWorld } from '../ecs/ECSWorld';
+import type { InputController } from '../core/InputController';
+import type { VoxelWorld } from '../world/VoxelWorld';
+import type { GameSettings } from '../config/constants';
+import type {
+  ControllerComponent,
+  GamemodeComponent,
+  PhysicsComponent,
+  TransformComponent
+} from '../ecs/componentFactories';
 
 export class PlayerMovementSystem {
-  constructor(input, world, settings) {
+  input: InputController;
+  world: VoxelWorld;
+  settings: GameSettings;
+  forward: THREE.Vector3;
+  right: THREE.Vector3;
+  movement: THREE.Vector3;
+  spectatorMove: THREE.Vector3;
+
+  constructor(input: InputController, world: VoxelWorld, settings: GameSettings) {
     this.input = input;
     this.world = world;
     this.settings = settings;
@@ -25,12 +43,13 @@ export class PlayerMovementSystem {
     this.spectatorMove = new THREE.Vector3();
   }
 
-  update(ecs, playerEntityId, dt) {
-    const transform = ecs.getComponent(playerEntityId, COMPONENT_TRANSFORM);
-    const physics = ecs.getComponent(playerEntityId, COMPONENT_PHYSICS);
-    const controller = ecs.getComponent(playerEntityId, COMPONENT_CONTROLLER);
+  update(ecs: ECSWorld, playerEntityId: number, dt: number): void {
+    const transform = ecs.getComponent<TransformComponent>(playerEntityId, COMPONENT_TRANSFORM);
+    const physics = ecs.getComponent<PhysicsComponent>(playerEntityId, COMPONENT_PHYSICS);
+    const controller = ecs.getComponent<ControllerComponent>(playerEntityId, COMPONENT_CONTROLLER);
     const gamemode =
-      ecs.getComponent(playerEntityId, COMPONENT_GAMEMODE)?.mode ?? GAMEMODE_SURVIVAL;
+      ecs.getComponent<GamemodeComponent>(playerEntityId, COMPONENT_GAMEMODE)?.mode ??
+      GAMEMODE_SURVIVAL;
     if (!transform || !physics || !controller?.enabled) return;
 
     applyLook(transform, this.input.consumeLookDelta(), this.settings.lookSensitivity);
@@ -44,7 +63,7 @@ export class PlayerMovementSystem {
     this.updateSurvival(transform, physics, dt);
   }
 
-  updateSurvival(transform, physics, dt) {
+  updateSurvival(transform: TransformComponent, physics: PhysicsComponent, dt: number): void {
     buildMovementVector(this.forward, this.right, this.movement, transform.yaw, this.input);
     const hasWishMove = this.movement.lengthSq() > 0;
     if (hasWishMove) this.movement.normalize();
@@ -130,7 +149,7 @@ export class PlayerMovementSystem {
     }
   }
 
-  updateSpectator(transform, physics, dt) {
+  updateSpectator(transform: TransformComponent, physics: PhysicsComponent, dt: number): void {
     physics.velocity.set(0, 0, 0);
     physics.onGround = false;
 
@@ -145,7 +164,7 @@ export class PlayerMovementSystem {
     transform.position.addScaledVector(this.spectatorMove, flySpeed * dt);
   }
 
-  clampHorizontalSpeed(velocity, maxSpeed) {
+  clampHorizontalSpeed(velocity: THREE.Vector3, maxSpeed: number): void {
     const hardLimit = Math.max(0, maxSpeed - 1e-4);
     const speed = Math.hypot(velocity.x, velocity.z);
     if (speed <= hardLimit || speed <= 1e-8) return;

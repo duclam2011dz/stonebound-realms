@@ -1,7 +1,34 @@
+import type * as THREE from 'three';
 import { COMPONENT_TRANSFORM } from '../ecs/components';
+import type { ECSWorld } from '../ecs/ECSWorld';
+import type { GameSystems } from './factories/createSystems';
+import type { InputController } from '../core/InputController';
+import type { Hotbar } from '../ui/Hotbar';
+import type { InventoryState } from '../inventory/InventoryState';
+import type { Hud } from '../ui/Hud';
+
+type OrchestratorDeps = {
+  ecs: ECSWorld;
+  playerEntityId: number;
+  systems: GameSystems;
+  camera: THREE.PerspectiveCamera;
+  input: InputController;
+  hotbar: Hotbar;
+  inventoryState: InventoryState;
+  hud: Hud | null;
+};
 
 export class SystemOrchestrator {
-  constructor(deps) {
+  ecs: ECSWorld;
+  playerEntityId: number;
+  systems: GameSystems;
+  camera: THREE.PerspectiveCamera;
+  input: InputController;
+  hotbar: Hotbar;
+  inventoryState: InventoryState;
+  hud: Hud | null;
+
+  constructor(deps: OrchestratorDeps) {
     this.ecs = deps.ecs;
     this.playerEntityId = deps.playerEntityId;
     this.systems = deps.systems;
@@ -12,8 +39,11 @@ export class SystemOrchestrator {
     this.hud = deps.hud;
   }
 
-  runPlayingFrame(dt) {
-    const transform = this.ecs.getComponent(this.playerEntityId, COMPONENT_TRANSFORM);
+  runPlayingFrame(dt: number): void {
+    const transform = this.ecs.getComponent<{ position: THREE.Vector3 }>(
+      this.playerEntityId,
+      COMPONENT_TRANSFORM
+    );
     if (!transform) return;
     this.systems.movement.update(this.ecs, this.playerEntityId, dt);
     this.systems.chunks.update(transform.position);
@@ -37,8 +67,11 @@ export class SystemOrchestrator {
     this.hud?.setBreakProgress(breakState?.progress ?? 0);
   }
 
-  runIdleFrame() {
-    const transform = this.ecs.getComponent(this.playerEntityId, COMPONENT_TRANSFORM);
+  runIdleFrame(): void {
+    const transform = this.ecs.getComponent<{ position: THREE.Vector3 }>(
+      this.playerEntityId,
+      COMPONENT_TRANSFORM
+    );
     this.systems.camera.update(this.ecs, this.playerEntityId, this.camera);
     if (transform) this.systems.dayNight.update(1 / 60, transform.position);
     this.systems.targeting.update();
@@ -47,8 +80,12 @@ export class SystemOrchestrator {
     this.hud?.setBreakProgress(0);
   }
 
-  forceChunkSync() {
-    const transform = this.ecs.getComponent(this.playerEntityId, COMPONENT_TRANSFORM);
+  forceChunkSync(): void {
+    const transform = this.ecs.getComponent<{ position: THREE.Vector3 }>(
+      this.playerEntityId,
+      COMPONENT_TRANSFORM
+    );
+    if (!transform) return;
     this.systems.chunks.force(transform.position);
   }
 }

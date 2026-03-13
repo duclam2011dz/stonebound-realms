@@ -8,7 +8,7 @@ import { drawStoneTile } from './tiles/drawStoneTile';
 import { drawWoodTile } from './tiles/drawWoodTile';
 import { drawLampTile } from './tiles/drawLampTile';
 
-export function drawBlockTiles(ctx, tileSize) {
+export function drawBlockTiles(ctx: CanvasRenderingContext2D, tileSize: number): void {
   drawGrassTopTile(ctx, BLOCK_FACE_TILES.grass.top.x, BLOCK_FACE_TILES.grass.top.y, tileSize);
   drawGrassSideTile(ctx, BLOCK_FACE_TILES.grass.side.x, BLOCK_FACE_TILES.grass.side.y, tileSize);
   drawDirtTile(ctx, BLOCK_FACE_TILES.grass.bottom.x, BLOCK_FACE_TILES.grass.bottom.y, tileSize);

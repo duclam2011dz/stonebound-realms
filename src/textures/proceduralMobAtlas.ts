@@ -1,12 +1,12 @@
-import { createProceduralAtlas } from './atlas/createProceduralAtlas';
+import { createProceduralAtlas, type AtlasResult } from './atlas/createProceduralAtlas';
 import { drawMobTiles } from './mob/drawMobTiles';
 
 const MOB_ATLAS_COLUMNS = 4;
 const MOB_ATLAS_ROWS = 4;
 const MOB_TILE_SIZE = 16;
-let cachedMobAtlas = null;
+let cachedMobAtlas: AtlasResult | null = null;
 
-export function getProceduralMobAtlasAssets() {
+export function getProceduralMobAtlasAssets(): AtlasResult {
   if (cachedMobAtlas) return cachedMobAtlas;
   cachedMobAtlas = createProceduralAtlas({
     columns: MOB_ATLAS_COLUMNS,

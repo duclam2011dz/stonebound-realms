@@ -1,11 +1,13 @@
 import * as THREE from 'three';
 
-export function createVoxelMaterial(texture) {
+type ShaderLike = { vertexShader: string; fragmentShader: string };
+
+export function createVoxelMaterial(texture: THREE.Texture): THREE.MeshLambertMaterial {
   const material = new THREE.MeshLambertMaterial({
     map: texture
   });
 
-  material.onBeforeCompile = (shader) => {
+  material.onBeforeCompile = (shader: ShaderLike) => {
     shader.vertexShader = shader.vertexShader.replace(
       '#include <common>',
       '#include <common>\nattribute vec2 lightmap;\nvarying vec2 vLightmap;'

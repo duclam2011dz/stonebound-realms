@@ -1,10 +1,28 @@
+import type * as THREE from 'three';
+import type { ECSWorld } from '../ecs/ECSWorld';
+import type { GamemodeComponent } from '../ecs/componentFactories';
 import { COMPONENT_GAMEMODE } from '../ecs/components';
 import { GAMEMODE_SPECTATOR, GAMEMODE_SURVIVAL } from '../game/gamemode/gameModes';
+import type { InputActions } from '../core/input/InputState';
+import type { Hotbar } from '../ui/Hotbar';
+import type { InventoryState } from '../inventory/InventoryState';
+import type { GameSettings } from '../config/constants';
+import type { VoxelWorld } from '../world/VoxelWorld';
+import type { VoxelHit } from '../world/services/VoxelRaycaster';
 import { getBlockTargetKey, getBreakDurationMs } from './interactions/blockBreakProfile';
 import { isBlockInsidePlayer } from './interactions/isBlockInsidePlayer';
 
+export type BreakState = { targetKey: string; progress: number };
+
 export class BlockInteractionSystem {
-  constructor(world, camera, settings) {
+  world: VoxelWorld;
+  camera: THREE.PerspectiveCamera;
+  settings: GameSettings;
+  breakTargetKey: string | null;
+  breakProgress: number;
+  breakDurationMs: number;
+
+  constructor(world: VoxelWorld, camera: THREE.PerspectiveCamera, settings: GameSettings) {
     this.world = world;
     this.camera = camera;
     this.settings = settings;
@@ -13,9 +31,18 @@ export class BlockInteractionSystem {
     this.breakDurationMs = 0;
   }
 
-  update(actions, dt, ecs, playerEntityId, hotbar, inventoryState, targetHit = null) {
+  update(
+    actions: InputActions,
+    dt: number,
+    ecs: ECSWorld,
+    playerEntityId: number,
+    hotbar: Hotbar,
+    inventoryState: InventoryState | null,
+    targetHit: VoxelHit | null = null
+  ): BreakState | null {
     const gamemode =
-      ecs.getComponent(playerEntityId, COMPONENT_GAMEMODE)?.mode ?? GAMEMODE_SURVIVAL;
+      ecs.getComponent<GamemodeComponent>(playerEntityId, COMPONENT_GAMEMODE)?.mode ??
+      GAMEMODE_SURVIVAL;
     const isSpectator = gamemode === GAMEMODE_SPECTATOR;
     const selectedBlockType = hotbar.getSelectedBlockType();
     const shouldRaycast = actions.breakHeld || actions.placeBlock || this.breakTargetKey !== null;
@@ -48,7 +75,12 @@ export class BlockInteractionSystem {
     };
   }
 
-  updateBreakProgress(breakHeld, hit, dt, inventoryState) {
+  updateBreakProgress(
+    breakHeld: boolean,
+    hit: VoxelHit | null,
+    dt: number,
+    inventoryState: InventoryState | null
+  ): void {
     if (!breakHeld || !hit?.block) {
       this.resetBreakState();
       return;
@@ -79,7 +111,7 @@ export class BlockInteractionSystem {
     }
   }
 
-  resetBreakState() {
+  resetBreakState(): void {
     this.breakTargetKey = null;
     this.breakProgress = 0;
     this.breakDurationMs = 0;

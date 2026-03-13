@@ -2,7 +2,12 @@ import { colorToCss } from '../../shared/color';
 import { drawNoiseTile } from '../../shared/drawNoiseTile';
 import { lcg } from '../../shared/random';
 
-export function drawStoneTile(ctx, tileX, tileY, tileSize) {
+export function drawStoneTile(
+  ctx: CanvasRenderingContext2D,
+  tileX: number,
+  tileY: number,
+  tileSize: number
+): void {
   drawNoiseTile(ctx, tileX, tileY, tileSize, [128, 132, 138], 505, 24);
   const startX = tileX * tileSize;
   const startY = tileY * tileSize;

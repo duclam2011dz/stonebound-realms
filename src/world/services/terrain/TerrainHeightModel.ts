@@ -1,17 +1,23 @@
+import type { SeededNoise } from '../../noise/SeededNoise';
+import type { BiomeModel } from './BiomeModel';
 import { BIOME_DESERT, BIOME_FOREST, BIOME_HILL, BIOME_PLAIN } from './biomeTypes';
 
-function clamp(value, min, max) {
+function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
 export class TerrainHeightModel {
-  constructor(noise, maxHeight, biomeModel) {
+  noise: SeededNoise;
+  maxHeight: number;
+  biomeModel: BiomeModel;
+
+  constructor(noise: SeededNoise, maxHeight: number, biomeModel: BiomeModel) {
     this.noise = noise;
     this.maxHeight = maxHeight;
     this.biomeModel = biomeModel;
   }
 
-  getHeight(x, z, biomeId = this.biomeModel.getBiomeId(x, z)) {
+  getHeight(x: number, z: number, biomeId: number = this.biomeModel.getBiomeId(x, z)): number {
     const continental = this.noise.fractalPerlin2D(x * 0.00195, z * 0.00195, 4, 0.52, 2.03);
     const erosion = this.noise.fractalPerlin2D(x * 0.009 + 700, z * 0.009 + 700, 2, 0.5, 2);
     const detail = this.noise.fractalSimplex2D(x * 0.0085, z * 0.0085, 3, 0.56, 2.1);
@@ -67,14 +73,19 @@ export class TerrainHeightModel {
     return clamp(Math.floor(baseHeight), 8, this.maxHeight - 6);
   }
 
-  buildHeightMap(baseX, baseZ, chunkSize, biomeMap = null) {
+  buildHeightMap(
+    baseX: number,
+    baseZ: number,
+    chunkSize: number,
+    biomeMap: Uint8Array | null = null
+  ): Int16Array {
     const heightMap = new Int16Array(chunkSize * chunkSize);
     for (let lz = 0; lz < chunkSize; lz++) {
       for (let lx = 0; lx < chunkSize; lx++) {
         const worldX = baseX + lx;
         const worldZ = baseZ + lz;
         const biomeId = biomeMap
-          ? biomeMap[lx + lz * chunkSize]
+          ? (biomeMap[lx + lz * chunkSize] ?? this.biomeModel.getBiomeId(worldX, worldZ))
           : this.biomeModel.getBiomeId(worldX, worldZ);
         heightMap[lx + lz * chunkSize] = this.getHeight(worldX, worldZ, biomeId);
       }

@@ -1,6 +1,24 @@
 import * as THREE from 'three';
 
-export function createProceduralAtlas({ columns, rows, tileSize, drawTiles }) {
+export type AtlasOptions = {
+  columns: number;
+  rows: number;
+  tileSize: number;
+  drawTiles: (ctx: CanvasRenderingContext2D, tileSize: number) => void;
+};
+
+export type AtlasResult = {
+  texture: THREE.CanvasTexture;
+  imageUrl: string;
+  tileSize: number;
+};
+
+export function createProceduralAtlas({
+  columns,
+  rows,
+  tileSize,
+  drawTiles
+}: AtlasOptions): AtlasResult {
   const canvas = document.createElement('canvas');
   canvas.width = columns * tileSize;
   canvas.height = rows * tileSize;

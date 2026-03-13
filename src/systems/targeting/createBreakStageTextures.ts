@@ -3,7 +3,7 @@ import * as THREE from 'three';
 const BREAK_STAGE_COUNT = 10;
 const TILE_SIZE = 64;
 
-function createStageTexture(stageIndex) {
+function createStageTexture(stageIndex: number): THREE.CanvasTexture | null {
   const canvas = document.createElement('canvas');
   canvas.width = TILE_SIZE;
   canvas.height = TILE_SIZE;
@@ -64,8 +64,8 @@ function createStageTexture(stageIndex) {
   return texture;
 }
 
-export function createBreakStageTextures() {
-  const textures = [];
+export function createBreakStageTextures(): THREE.CanvasTexture[] {
+  const textures: THREE.CanvasTexture[] = [];
   for (let stage = 0; stage < BREAK_STAGE_COUNT; stage++) {
     const texture = createStageTexture(stage);
     if (texture) textures.push(texture);

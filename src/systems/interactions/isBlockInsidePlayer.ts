@@ -1,8 +1,16 @@
 import { COMPONENT_PHYSICS, COMPONENT_TRANSFORM } from '../../ecs/components';
+import type { ECSWorld } from '../../ecs/ECSWorld';
+import type { PhysicsComponent, TransformComponent } from '../../ecs/componentFactories';
 
-export function isBlockInsidePlayer(ecs, playerEntityId, blockX, blockY, blockZ) {
-  const transform = ecs.getComponent(playerEntityId, COMPONENT_TRANSFORM);
-  const physics = ecs.getComponent(playerEntityId, COMPONENT_PHYSICS);
+export function isBlockInsidePlayer(
+  ecs: ECSWorld,
+  playerEntityId: number,
+  blockX: number,
+  blockY: number,
+  blockZ: number
+): boolean {
+  const transform = ecs.getComponent<TransformComponent>(playerEntityId, COMPONENT_TRANSFORM);
+  const physics = ecs.getComponent<PhysicsComponent>(playerEntityId, COMPONENT_PHYSICS);
   if (!transform || !physics) return false;
 
   const pMinX = transform.position.x - physics.radius;

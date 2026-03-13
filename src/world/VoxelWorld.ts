@@ -4,23 +4,42 @@ import {
   DEFAULT_SETTINGS,
   PLAYER_HEIGHT,
   PLAYER_RADIUS,
-  WORLD_MAX_HEIGHT
+  WORLD_MAX_HEIGHT,
+  type GameSettings
 } from '../config/constants';
 import { getProceduralAtlasAssets } from '../textures/proceduralBlockAtlas';
 import { createVoxelMaterial } from '../core/render/lighting/createVoxelMaterial';
 import { TerrainGenerator } from './services/TerrainGenerator';
 import { VoxelChunkMesher } from './services/VoxelChunkMesher';
-import { VoxelRaycaster } from './services/VoxelRaycaster';
+import { VoxelRaycaster, type VoxelHit } from './services/VoxelRaycaster';
 import { VoxelStorage } from './services/VoxelStorage';
 import { ChunkTaskQueue } from './services/chunks/ChunkTaskQueue';
 import { planVisibleChunks } from './services/chunks/planVisibleChunks';
-import { BLOCK_ID_LAMP } from './services/BlockPalette';
+import { BLOCK_ID_LAMP, type BlockType } from './services/BlockPalette';
 
-function createFallbackMaterial() {
+type WorldConfig = {
+  worldName?: string;
+  seed?: string;
+};
+
+type LightSource = { x: number; y: number; z: number };
+
+type SunOcclusion = {
+  directVisibility: number;
+  ambientVisibility: number;
+  caveFactor: number;
+  skyOpenFraction: number;
+  overheadBlocked: boolean;
+  frontBlocked: boolean;
+};
+
+type SpawnPoint = { x: number; y: number; z: number };
+
+function createFallbackMaterial(): THREE.MeshLambertMaterial {
   return new THREE.MeshLambertMaterial({ color: 0x7b5438 });
 }
 
-function buildSpawnOffsets(maxRadius = 6) {
+function buildSpawnOffsets(maxRadius = 6): Array<{ x: number; z: number; distanceSq: number }> {
   const offsets = [{ x: 0, z: 0, distanceSq: 0 }];
   for (let radius = 1; radius <= maxRadius; radius++) {
     for (let dz = -radius; dz <= radius; dz++) {
@@ -35,19 +54,20 @@ function buildSpawnOffsets(maxRadius = 6) {
 }
 
 const SPAWN_OFFSETS = buildSpawnOffsets();
-const SKY_SAMPLE_OFFSETS = Object.freeze([
+const SKY_SAMPLE_OFFSETS: ReadonlyArray<{ x: number; z: number }> = Object.freeze([
   { x: 0, z: 0 },
   { x: 1, z: 0 },
   { x: -1, z: 0 },
   { x: 0, z: 1 },
   { x: 0, z: -1 }
 ]);
-const DIRECTIONAL_SAMPLE_OFFSETS = Object.freeze([
-  { x: 0, y: 0, z: 0 },
-  { x: 0.24, y: -0.18, z: 0.24 },
-  { x: -0.24, y: -0.18, z: -0.24 }
-]);
-const UPWARD_SKY_RAYS = Object.freeze([
+const DIRECTIONAL_SAMPLE_OFFSETS: ReadonlyArray<{ x: number; y: number; z: number }> =
+  Object.freeze([
+    { x: 0, y: 0, z: 0 },
+    { x: 0.24, y: -0.18, z: 0.24 },
+    { x: -0.24, y: -0.18, z: -0.24 }
+  ]);
+const UPWARD_SKY_RAYS: ReadonlyArray<{ x: number; y: number; z: number }> = Object.freeze([
   { x: 0, y: 1, z: 0 },
   { x: 0.5, y: 0.866, z: 0 },
   { x: -0.5, y: 0.866, z: 0 },
@@ -59,12 +79,35 @@ const UPWARD_SKY_RAYS = Object.freeze([
   { x: -0.38, y: 0.82, z: -0.38 }
 ]);
 
-function clamp(value, min, max) {
+function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
 export class VoxelWorld {
-  constructor(scene, settings, worldConfig = {}) {
+  scene: THREE.Scene;
+  settings: GameSettings;
+  chunkSize: number;
+  maxHeight: number;
+  worldConfig: WorldConfig;
+  renderDistance: number;
+  lodStartDistance: number;
+  currentChunkX: number;
+  currentChunkZ: number;
+  hasChunkCenter: boolean;
+  storage: VoxelStorage;
+  terrain: TerrainGenerator;
+  lampSourcesByChunk: Map<string, LightSource[]>;
+  mesher: VoxelChunkMesher;
+  raycaster: VoxelRaycaster;
+  chunkMeshes: Map<string, THREE.Mesh>;
+  chunkLodSteps: Map<string, number>;
+  desiredChunks: Set<string>;
+  chunkTaskQueue: ChunkTaskQueue;
+  visibleEpoch: number;
+  blockMaterial: THREE.MeshLambertMaterial;
+  spectatorViewEnabled: boolean;
+
+  constructor(scene: THREE.Scene, settings: GameSettings, worldConfig: WorldConfig = {}) {
     this.scene = scene;
     this.settings = settings;
     this.chunkSize = CHUNK_SIZE;
@@ -95,7 +138,7 @@ export class VoxelWorld {
     this.initializeBlockAtlas();
   }
 
-  initializeBlockAtlas() {
+  initializeBlockAtlas(): void {
     const atlasAssets = getProceduralAtlasAssets();
     this.blockMaterial.dispose();
     this.blockMaterial = createVoxelMaterial(atlasAssets.texture);
@@ -103,7 +146,7 @@ export class VoxelWorld {
     this.rebuildAllVisibleChunks();
   }
 
-  applyBlockMaterialViewMode() {
+  applyBlockMaterialViewMode(): void {
     this.blockMaterial.transparent = this.spectatorViewEnabled;
     this.blockMaterial.opacity = this.spectatorViewEnabled ? 0.18 : 1;
     this.blockMaterial.depthWrite = !this.spectatorViewEnabled;
@@ -111,23 +154,23 @@ export class VoxelWorld {
     this.blockMaterial.needsUpdate = true;
   }
 
-  setSpectatorView(enabled) {
+  setSpectatorView(enabled: boolean): void {
     const nextEnabled = Boolean(enabled);
     if (nextEnabled === this.spectatorViewEnabled) return;
     this.spectatorViewEnabled = nextEnabled;
     this.applyBlockMaterialViewMode();
   }
 
-  setRenderDistance(nextRenderDistance) {
+  setRenderDistance(nextRenderDistance: number): void {
     this.renderDistance = Math.max(1, Math.floor(nextRenderDistance));
   }
 
-  setLodStartDistance(nextLodStartDistance) {
+  setLodStartDistance(nextLodStartDistance: number): void {
     const parsed = Math.max(1, Math.floor(nextLodStartDistance));
     this.lodStartDistance = Math.min(parsed, this.renderDistance);
   }
 
-  getChunkLodStep(cx, cz) {
+  getChunkLodStep(cx: number, cz: number): number {
     const ringDistance = Math.max(
       Math.abs(cx - this.currentChunkX),
       Math.abs(cz - this.currentChunkZ)
@@ -137,19 +180,19 @@ export class VoxelWorld {
     return 1;
   }
 
-  rebuildAllVisibleChunks() {
+  rebuildAllVisibleChunks(): void {
     for (const cKey of this.storage.loadedChunks) {
       const { cx, cz } = this.storage.parseChunkKey(cKey);
       this.enqueueChunkTask(cx, cz, 0, true);
     }
   }
 
-  generateChunk(cx, cz) {
+  generateChunk(cx: number, cz: number): void {
     this.terrain.generateChunk(this.storage, cx, cz);
     this.refreshChunkLampSources(cx, cz);
   }
 
-  refreshChunkLampSources(cx, cz) {
+  refreshChunkLampSources(cx: number, cz: number): LightSource[] {
     const cKey = this.storage.chunkKey(cx, cz);
     const chunk = this.storage.getChunkData(cx, cz);
     if (!chunk) {
@@ -174,7 +217,7 @@ export class VoxelWorld {
     return sources;
   }
 
-  getChunkLightSources(cx, cz) {
+  getChunkLightSources(cx: number, cz: number): LightSource[] {
     const sources = [];
     for (let dz = -1; dz <= 1; dz++) {
       for (let dx = -1; dx <= 1; dx++) {
@@ -186,25 +229,25 @@ export class VoxelWorld {
     return sources;
   }
 
-  getSpawnPoint() {
+  getSpawnPoint(): SpawnPoint {
     const rawSpawn = this.terrain.createSpawnPoint();
     this.ensureChunksAroundWorld(rawSpawn.x, rawSpawn.z, 1);
     return this.findSafeSpawnPoint(rawSpawn);
   }
 
-  getSeedString() {
+  getSeedString(): string {
     return this.terrain.getSeedDisplay();
   }
 
-  getBiomeAt(x, z) {
+  getBiomeAt(x: number, z: number): string {
     return this.terrain.getBiomeAt(Math.floor(x), Math.floor(z));
   }
 
-  getMaxHeight() {
+  getMaxHeight(): number {
     return this.maxHeight;
   }
 
-  ensureChunksAroundWorld(worldX, worldZ, range = 1) {
+  ensureChunksAroundWorld(worldX: number, worldZ: number, range = 1): void {
     const centerCX = this.storage.floorDiv(worldX, this.chunkSize);
     const centerCZ = this.storage.floorDiv(worldZ, this.chunkSize);
     for (let dz = -range; dz <= range; dz++) {
@@ -218,7 +261,7 @@ export class VoxelWorld {
     }
   }
 
-  findSafeSpawnPoint(rawSpawn) {
+  findSafeSpawnPoint(rawSpawn: SpawnPoint): SpawnPoint {
     const baseX = Math.floor(rawSpawn.x);
     const baseZ = Math.floor(rawSpawn.z);
 
@@ -242,7 +285,7 @@ export class VoxelWorld {
     return { x: baseX, y: rawSpawn.y, z: baseZ };
   }
 
-  disposeChunkMesh(cKey) {
+  disposeChunkMesh(cKey: string): void {
     const mesh = this.chunkMeshes.get(cKey);
     if (!mesh) return;
     this.scene.remove(mesh);
@@ -250,7 +293,7 @@ export class VoxelWorld {
     this.chunkMeshes.delete(cKey);
   }
 
-  unloadChunk(cx, cz) {
+  unloadChunk(cx: number, cz: number): void {
     const cKey = this.storage.chunkKey(cx, cz);
     this.disposeChunkMesh(cKey);
     this.chunkLodSteps.delete(cKey);
@@ -258,7 +301,7 @@ export class VoxelWorld {
     this.lampSourcesByChunk.delete(cKey);
   }
 
-  buildChunkMesh(cx, cz) {
+  buildChunkMesh(cx: number, cz: number): void {
     const cKey = this.storage.chunkKey(cx, cz);
     this.disposeChunkMesh(cKey);
     this.chunkLodSteps.delete(cKey);
@@ -278,7 +321,7 @@ export class VoxelWorld {
     this.chunkLodSteps.set(cKey, lodStep);
   }
 
-  enqueueChunkTask(cx, cz, priority = 0, forceMesh = false) {
+  enqueueChunkTask(cx: number, cz: number, priority = 0, forceMesh = false): void {
     const key = this.storage.chunkKey(cx, cz);
     this.chunkTaskQueue.enqueue(key, {
       key,
@@ -290,7 +333,7 @@ export class VoxelWorld {
     });
   }
 
-  processChunkQueue(maxTasks = 2, timeBudgetMs = 5) {
+  processChunkQueue(maxTasks = 2, timeBudgetMs = 5): number {
     const start = performance.now();
     let processed = 0;
 
@@ -320,15 +363,15 @@ export class VoxelWorld {
     return processed;
   }
 
-  hasPendingChunkWork() {
+  hasPendingChunkWork(): boolean {
     return this.chunkTaskQueue.size > 0;
   }
 
-  getPendingChunkCount() {
+  getPendingChunkCount(): number {
     return this.chunkTaskQueue.size;
   }
 
-  rebuildChunksAroundBlock(x, z) {
+  rebuildChunksAroundBlock(x: number, z: number): void {
     const cx = this.storage.floorDiv(x, this.chunkSize);
     const cz = this.storage.floorDiv(z, this.chunkSize);
     this.enqueueChunkTask(cx, cz, 0, true);
@@ -338,7 +381,7 @@ export class VoxelWorld {
     this.enqueueChunkTask(cx, cz - 1, 0, true);
   }
 
-  updateVisibleChunksAround(position, force = false) {
+  updateVisibleChunksAround(position: THREE.Vector3, force = false): void {
     const pxChunk = this.storage.floorDiv(position.x, this.chunkSize);
     const pzChunk = this.storage.floorDiv(position.z, this.chunkSize);
     const chunkChanged =
@@ -352,7 +395,7 @@ export class VoxelWorld {
     const desiredPlan = planVisibleChunks(pxChunk, pzChunk, this.renderDistance, (cx, cz) =>
       this.storage.chunkKey(cx, cz)
     );
-    const desired = new Set();
+    const desired = new Set<string>();
 
     for (const entry of desiredPlan) {
       desired.add(entry.key);
@@ -372,23 +415,23 @@ export class VoxelWorld {
     }
   }
 
-  isBlockFilled(x, y, z) {
+  isBlockFilled(x: number, y: number, z: number): boolean {
     return this.storage.isBlockFilled(x, y, z);
   }
 
-  getBlockTypeAt(x, y, z) {
+  getBlockTypeAt(x: number, y: number, z: number): BlockType | null {
     return this.storage.getBlockAt(x, y, z);
   }
 
-  setBlock(x, y, z, type) {
+  setBlock(x: number, y: number, z: number, type: BlockType): void {
     this.storage.setBlock(x, y, z, type);
   }
 
-  removeBlock(x, y, z) {
+  removeBlock(x: number, y: number, z: number): void {
     this.storage.removeBlock(x, y, z);
   }
 
-  collidesPlayer(x, y, z, radius, height) {
+  collidesPlayer(x: number, y: number, z: number, radius: number, height: number): boolean {
     const minX = Math.floor(x - radius);
     const maxX = Math.floor(x + radius);
     const minY = Math.floor(y);
@@ -405,13 +448,13 @@ export class VoxelWorld {
     return false;
   }
 
-  raycastFromCamera(camera, maxDistance) {
+  raycastFromCamera(camera: THREE.Camera, maxDistance: number): VoxelHit | null {
     return this.raycaster.raycast(camera, maxDistance, (x, y, z) =>
       this.storage.isBlockFilled(x, y, z)
     );
   }
 
-  getSkyExposureAt(x, y, z, sampleHeight = 40) {
+  getSkyExposureAt(x: number, y: number, z: number, sampleHeight = 40): number {
     const blockX = Math.floor(x);
     const blockZ = Math.floor(z);
     const startY = Math.max(0, Math.floor(y) + 1);
@@ -446,7 +489,7 @@ export class VoxelWorld {
     return totalExposure / SKY_SAMPLE_OFFSETS.length;
   }
 
-  hasSkyAccessAt(x, y, z) {
+  hasSkyAccessAt(x: number, y: number, z: number): boolean {
     const blockX = Math.floor(x);
     const blockZ = Math.floor(z);
     const startY = Math.max(0, Math.floor(y) + 1);
@@ -458,7 +501,16 @@ export class VoxelWorld {
     return true;
   }
 
-  traceFilledRay(originX, originY, originZ, dirX, dirY, dirZ, maxDistance = 32, step = 0.5) {
+  traceFilledRay(
+    originX: number,
+    originY: number,
+    originZ: number,
+    dirX: number,
+    dirY: number,
+    dirZ: number,
+    maxDistance = 32,
+    step = 0.5
+  ): { hit: boolean; distance: number; blockY: number } {
     const safeStep = Math.max(0.2, step);
     const maxDist = Math.max(safeStep, maxDistance);
 
@@ -481,7 +533,7 @@ export class VoxelWorld {
     return { hit: false, distance: maxDist, blockY: -1 };
   }
 
-  sampleUpwardSkyFraction(x, y, z, maxDistance = 28) {
+  sampleUpwardSkyFraction(x: number, y: number, z: number, maxDistance = 28): number {
     let openRays = 0;
     for (const ray of UPWARD_SKY_RAYS) {
       const rayLen = Math.hypot(ray.x, ray.y, ray.z) || 1;
@@ -500,7 +552,13 @@ export class VoxelWorld {
     return openRays / UPWARD_SKY_RAYS.length;
   }
 
-  getDirectionalVisibilityAt(x, y, z, direction, maxDistance = 34) {
+  getDirectionalVisibilityAt(
+    x: number,
+    y: number,
+    z: number,
+    direction: THREE.Vector3,
+    maxDistance = 34
+  ): number {
     const dirLength = Math.hypot(direction.x, direction.y, direction.z);
     if (dirLength <= 1e-6) return 1;
     const dirX = direction.x / dirLength;
@@ -525,7 +583,7 @@ export class VoxelWorld {
     return visibleSamples / DIRECTIONAL_SAMPLE_OFFSETS.length;
   }
 
-  getSunOcclusionAt(x, y, z, sunDirection) {
+  getSunOcclusionAt(x: number, y: number, z: number, sunDirection: THREE.Vector3): SunOcclusion {
     const dirLength = Math.hypot(sunDirection.x, sunDirection.y, sunDirection.z);
     if (dirLength <= 1e-6 || sunDirection.y <= 0) {
       return {
@@ -593,7 +651,7 @@ export class VoxelWorld {
     };
   }
 
-  breakBlockAtHit(hit) {
+  breakBlockAtHit(hit: VoxelHit | null): BlockType | null {
     const block = hit?.block;
     if (!block) return null;
     const blockType = this.storage.getBlockAt(block.x, block.y, block.z);
@@ -608,7 +666,11 @@ export class VoxelWorld {
     return blockType;
   }
 
-  placeBlockAtHit(hit, blockType, canPlaceAtFn) {
+  placeBlockAtHit(
+    hit: VoxelHit | null,
+    blockType: BlockType,
+    canPlaceAtFn: (x: number, y: number, z: number) => boolean
+  ): boolean {
     const block = hit?.block;
     if (!block || !hit.face) return false;
 

@@ -1,10 +1,10 @@
-export function normalizeSeed(seedInput) {
+export function normalizeSeed(seedInput: string | number | null | undefined): string {
   const trimmed = String(seedInput ?? '').trim();
   if (!trimmed) return '';
   return trimmed;
 }
 
-export function hashSeedToInt(seed) {
+export function hashSeedToInt(seed: string | number | null | undefined): number {
   const normalized = normalizeSeed(seed);
   if (!normalized) return Math.floor(Math.random() * 2147483647);
 
@@ -16,7 +16,10 @@ export function hashSeedToInt(seed) {
   return (hash >>> 0) % 2147483647;
 }
 
-export function seededSpawnPosition(seedInt, spread = 1024) {
+export function seededSpawnPosition(
+  seedInt: number,
+  spread: number = 1024
+): { x: number; z: number } {
   const x = ((seedInt % spread) - spread / 2) | 0;
   const z = ((((seedInt / spread) | 0) % spread) - spread / 2) | 0;
   return { x, z };

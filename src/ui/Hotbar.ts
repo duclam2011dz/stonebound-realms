@@ -1,5 +1,7 @@
 import { BLOCK_ATLAS, BLOCK_FACE_TILES } from '../config/constants';
 import { getProceduralAtlasAssets } from '../textures/proceduralBlockAtlas';
+import type { InventoryState } from '../inventory/InventoryState';
+import type { BlockType } from '../world/services/BlockPalette';
 
 const FALLBACK_COLORS = {
   grass: '#62b34e',
@@ -11,7 +13,10 @@ const FALLBACK_COLORS = {
   lamp: '#f3d16c'
 };
 
-function getIconTile(blockType) {
+type BlockTile = { x: number; y: number };
+
+function getIconTile(blockType: BlockType | null): BlockTile | null {
+  if (!blockType) return null;
   if (blockType === 'grass') return BLOCK_FACE_TILES.grass.top;
   if (blockType === 'wood') return BLOCK_FACE_TILES.wood.all;
   if (blockType === 'leaf') return BLOCK_FACE_TILES.leaf.all;
@@ -23,7 +28,13 @@ function getIconTile(blockType) {
 }
 
 export class Hotbar {
-  constructor(rootElement, inventoryState) {
+  rootElement: HTMLElement | null;
+  inventoryState: InventoryState;
+  selectedIndex: number;
+  slotElements: HTMLElement[];
+  proceduralAtlasImageUrl: string;
+
+  constructor(rootElement: HTMLElement | null, inventoryState: InventoryState) {
     this.rootElement = rootElement;
     this.inventoryState = inventoryState;
     this.selectedIndex = 0;
@@ -36,7 +47,7 @@ export class Hotbar {
     this.refreshSlots();
   }
 
-  render() {
+  render(): void {
     if (!this.rootElement) return;
     this.rootElement.innerHTML = '';
     this.slotElements = [];
@@ -62,7 +73,7 @@ export class Hotbar {
     }
   }
 
-  applyAtlasSwatch(swatchElement, blockType) {
+  applyAtlasSwatch(swatchElement: HTMLElement, blockType: BlockType | null): void {
     const tile = getIconTile(blockType);
     if (!tile) {
       swatchElement.style.backgroundImage = '';
@@ -78,13 +89,13 @@ export class Hotbar {
     swatchElement.style.backgroundColor = 'transparent';
   }
 
-  refreshSlots() {
+  refreshSlots(): void {
     for (let index = 0; index < 9; index++) {
       const slotElement = this.slotElements[index];
       if (!slotElement) continue;
       const slotData = this.inventoryState.getSlot(index);
-      const swatch = slotElement.querySelector('.hotbar-swatch');
-      const count = slotElement.querySelector('.hotbar-count');
+      const swatch = slotElement.querySelector<HTMLElement>('.hotbar-swatch');
+      const count = slotElement.querySelector<HTMLElement>('.hotbar-count');
       if (!swatch) continue;
       this.applyAtlasSwatch(swatch, slotData?.blockType ?? null);
       if (count) {
@@ -95,7 +106,7 @@ export class Hotbar {
     }
   }
 
-  setSelected(index) {
+  setSelected(index: number): void {
     if (index < 0 || index >= 9) return;
     this.selectedIndex = index;
     this.slotElements.forEach((slotElement, slotIndex) => {
@@ -103,17 +114,17 @@ export class Hotbar {
     });
   }
 
-  getSelectedBlockType() {
+  getSelectedBlockType(): BlockType | null {
     const selected = this.inventoryState.getSlot(this.selectedIndex);
     if (!selected || selected.quantity <= 0) return null;
     return selected.blockType;
   }
 
-  getSelectedSlotIndex() {
+  getSelectedSlotIndex(): number {
     return this.selectedIndex;
   }
 
-  consumeSelectedBlock(amount = 1) {
+  consumeSelectedBlock(amount = 1): boolean {
     return this.inventoryState.removeFromSlot(this.selectedIndex, amount) > 0;
   }
 }

@@ -1,7 +1,12 @@
 import { colorToCss, tint } from '../../shared/color';
 import { lcg } from '../../shared/random';
 
-export function drawGrassSideTile(ctx, tileX, tileY, tileSize) {
+export function drawGrassSideTile(
+  ctx: CanvasRenderingContext2D,
+  tileX: number,
+  tileY: number,
+  tileSize: number
+): void {
   const startX = tileX * tileSize;
   const startY = tileY * tileSize;
   const half = tileSize / 2;
