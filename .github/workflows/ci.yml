@@ -27,10 +27,7 @@ jobs:
         run: npm run lint
 
       - name: Format Check
-        run: npm run format
-
-      - name: Verify Formatting
-        run: git diff --exit-code
+        run: npm run format:check
 
       - name: Build
         run: npm run build
