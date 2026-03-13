@@ -320,7 +320,9 @@ Update 2026-03-11 (tree shadow fix):
 - Removed canopy-based auto-darkening; ambient/sky now only darken for deep caves so standing under trees no longer dims the whole scene.
 
 Update 2026-03-13 (TypeScript + Vite migration):
-- Renamed all src/*.js -> src/*.ts, added global window typings, and removed .js import suffixes.
+
+- Renamed all src/_.js -> src/_.ts, added global window typings, and removed .js import suffixes.
 - Added Vite + TypeScript config (tsconfig strict, vite.config.ts multi-page).
 - Updated ESLint for TypeScript and ran format/lint successfully.
+- Added Vite-friendly three dependency and removed CDN importmap from game.html.
 
