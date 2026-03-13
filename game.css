@@ -14,7 +14,7 @@ body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background: #98c7f2;
 }
 
@@ -185,7 +185,7 @@ canvas {
 
 #crosshair::before,
 #crosshair::after {
-  content: "";
+  content: '';
   position: absolute;
   background: var(--crosshair);
   box-shadow: 0 0 6px rgba(0, 0, 0, 0.65);

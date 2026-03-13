@@ -1,30 +1,30 @@
-import fs from "node:fs";
-import { chromium } from "playwright";
+import fs from 'node:fs';
+import { chromium } from 'playwright';
 
-const outDir = "C:/Users/Admin/.codex/memories/web-gameplay-rd12-inventory";
+const outDir = 'C:/Users/Admin/.codex/memories/web-gameplay-rd12-inventory';
 fs.mkdirSync(outDir, { recursive: true });
 
 const browser = await chromium.launch({
   headless: true,
-  args: ["--use-gl=angle", "--use-angle=swiftshader"]
+  args: ['--use-gl=angle', '--use-angle=swiftshader']
 });
 const page = await browser.newPage();
-await page.goto("http://127.0.0.1:4173/game.html", { waitUntil: "domcontentloaded" });
+await page.goto('http://127.0.0.1:4173/game.html', { waitUntil: 'domcontentloaded' });
 await page.waitForTimeout(1400);
 
 const metrics = await page.evaluate(() => {
   const game = window.__game;
-  if (!game) return { error: "no-game" };
+  if (!game) return { error: 'no-game' };
 
   const advanceFrames = (frames) => {
     for (let i = 0; i < frames; i++) game.advanceTime(1000 / 60);
   };
 
   const inventory = game.inventoryState;
-  const transform = game.ecs.getComponent(game.playerEntityId, "transform");
-  const physics = game.ecs.getComponent(game.playerEntityId, "physics");
-  const controller = game.ecs.getComponent(game.playerEntityId, "controller");
-  if (!transform || !physics || !controller) return { error: "missing-player-components" };
+  const transform = game.ecs.getComponent(game.playerEntityId, 'transform');
+  const physics = game.ecs.getComponent(game.playerEntityId, 'physics');
+  const controller = game.ecs.getComponent(game.playerEntityId, 'controller');
+  if (!transform || !physics || !controller) return { error: 'missing-player-components' };
 
   const clearInventory = () => {
     for (let i = 0; i < inventory.size; i++) {
@@ -74,15 +74,15 @@ const metrics = await page.evaluate(() => {
   game.systems.camera.update(game.ecs, game.playerEntityId, game.renderContext.camera);
 
   let maxDiagonalSpeed = 0;
-  game.input.state.keys.set("KeyW", true);
-  game.input.state.keys.set("KeyD", true);
+  game.input.state.keys.set('KeyW', true);
+  game.input.state.keys.set('KeyD', true);
   for (let i = 0; i < 120; i++) {
     game.advanceTime(1000 / 60);
     const speed = Math.hypot(physics.velocity.x, physics.velocity.z);
     if (speed > maxDiagonalSpeed) maxDiagonalSpeed = speed;
   }
-  game.input.state.keys.set("KeyW", false);
-  game.input.state.keys.set("KeyD", false);
+  game.input.state.keys.set('KeyW', false);
+  game.input.state.keys.set('KeyD', false);
 
   clearInventory();
   transform.position.set(0.5, 72, 0.5);
@@ -102,8 +102,8 @@ const metrics = await page.evaluate(() => {
       }
     }
   }
-  game.world.setBlock(0, 73, -3, "stone");
-  game.world.setBlock(0, 73, -4, "stone");
+  game.world.setBlock(0, 73, -3, 'stone');
+  game.world.setBlock(0, 73, -4, 'stone');
   game.world.rebuildChunksAroundBlock(0, -3);
   game.world.rebuildChunksAroundBlock(0, -4);
   while (game.world.hasPendingChunkWork()) {
@@ -115,11 +115,11 @@ const metrics = await page.evaluate(() => {
   game.input.state.breakHeld = true;
   advanceFrames(8);
   const progressMid = game.systems.targeting.breakState?.progress ?? 0;
-  const progressBarRoot = document.getElementById("breakProgress");
-  const progressBarFill = document.getElementById("breakProgressFill");
+  const progressBarRoot = document.getElementById('breakProgress');
+  const progressBarFill = document.getElementById('breakProgressFill');
   const breakBarMid = {
-    visible: !progressBarRoot?.classList.contains("is-hidden"),
-    width: progressBarFill?.style.width ?? ""
+    visible: !progressBarRoot?.classList.contains('is-hidden'),
+    width: progressBarFill?.style.width ?? ''
   };
 
   let guard = 0;
@@ -133,7 +133,7 @@ const metrics = await page.evaluate(() => {
   const brokeTargetBeforePlace = !game.world.isBlockFilled(0, 73, -3);
 
   const postBreakInventory = scanInventory();
-  const stoneSlot = postBreakInventory.find((slot) => slot.blockType === "stone") ?? null;
+  const stoneSlot = postBreakInventory.find((slot) => slot.blockType === 'stone') ?? null;
   if (stoneSlot && stoneSlot.index < 9) {
     game.hotbar.setSelected(stoneSlot.index);
   }
@@ -146,15 +146,16 @@ const metrics = await page.evaluate(() => {
   const placedAtHole = game.world.isBlockFilled(0, 73, -3);
 
   clearInventory();
-  inventory.addBlock("grass", 130);
-  inventory.addBlock("grass", 10);
+  inventory.addBlock('grass', 130);
+  inventory.addBlock('grass', 10);
   const stackLayout = scanInventory();
 
   clearInventory();
-  inventory.setSlot(5, { blockType: "dirt", quantity: 5 });
-  inventory.addBlock("stone", 1);
+  inventory.setSlot(5, { blockType: 'dirt', quantity: 5 });
+  inventory.addBlock('stone', 1);
   const insertionOrderLayout = scanInventory();
-  const insertedStoneSlot = insertionOrderLayout.find((slot) => slot.blockType === "stone")?.index ?? -1;
+  const insertedStoneSlot =
+    insertionOrderLayout.find((slot) => slot.blockType === 'stone')?.index ?? -1;
 
   const centerX = 0;
   const centerZ = 0;
@@ -193,9 +194,12 @@ const metrics = await page.evaluate(() => {
   }
 
   const neighborOffsets = [
-    [1, 0, 0], [-1, 0, 0],
-    [0, 1, 0], [0, -1, 0],
-    [0, 0, 1], [0, 0, -1]
+    [1, 0, 0],
+    [-1, 0, 0],
+    [0, 1, 0],
+    [0, -1, 0],
+    [0, 0, 1],
+    [0, 0, -1]
   ];
   let largestComponent = 0;
   let componentCount = 0;

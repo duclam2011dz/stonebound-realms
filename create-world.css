@@ -18,7 +18,7 @@ body {
   margin: 0;
   width: 100%;
   min-height: 100%;
-  font-family: "Trebuchet MS", "Lucida Sans Unicode", "Book Antiqua", serif;
+  font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Book Antiqua', serif;
   color: var(--text-main);
   background: linear-gradient(180deg, #77a7cf 0%, #597f9b 40%, #274235 100%);
 }
@@ -95,7 +95,7 @@ body {
 .create-world-card h1 {
   margin: 0;
   font-size: clamp(30px, 4.6vw, 40px);
-  font-family: "Georgia", "Palatino Linotype", serif;
+  font-family: 'Georgia', 'Palatino Linotype', serif;
   text-shadow: 0 8px 18px rgba(0, 0, 0, 0.44);
 }
 
@@ -153,7 +153,9 @@ body {
   font-weight: 700;
   font-size: 15px;
   cursor: pointer;
-  transition: transform 120ms ease, filter 120ms ease;
+  transition:
+    transform 120ms ease,
+    filter 120ms ease;
 }
 
 .btn:hover {

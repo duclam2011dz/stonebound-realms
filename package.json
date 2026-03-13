@@ -3,15 +3,23 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "lint": "eslint \"src/**/*.js\" \"tools/**/*.mjs\"",
-    "format": "prettier --write \"**/*.{js,mjs,css,html,json,md}\""
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint \"src/**/*.{ts,tsx}\" \"tools/**/*.mjs\"",
+    "format": "prettier --write \"**/*.{ts,tsx,js,mjs,css,html,json,md}\""
   },
   "dependencies": {
     "playwright": "^1.58.2"
   },
   "devDependencies": {
+    "@types/three": "^0.161.0",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^9.1.0",
-    "prettier": "^3.3.3"
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.6"
   }
 }

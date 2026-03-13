@@ -1,23 +1,23 @@
-import fs from "node:fs";
-import { chromium } from "playwright";
+import fs from 'node:fs';
+import { chromium } from 'playwright';
 
-const outDir = "C:/Users/Admin/.codex/memories/web-spawn-biome-lighting";
+const outDir = 'C:/Users/Admin/.codex/memories/web-spawn-biome-lighting';
 fs.mkdirSync(outDir, { recursive: true });
 
 const browser = await chromium.launch({
   headless: true,
-  args: ["--use-gl=angle", "--use-angle=swiftshader"]
+  args: ['--use-gl=angle', '--use-angle=swiftshader']
 });
 const page = await browser.newPage();
-await page.goto("http://127.0.0.1:4173/game.html", { waitUntil: "domcontentloaded" });
+await page.goto('http://127.0.0.1:4173/game.html', { waitUntil: 'domcontentloaded' });
 await page.waitForTimeout(1200);
 
 const metrics = await page.evaluate(() => {
   const game = window.__game;
-  if (!game) return { error: "no-game" };
-  const transform = game.ecs.getComponent(game.playerEntityId, "transform");
-  const physics = game.ecs.getComponent(game.playerEntityId, "physics");
-  if (!transform || !physics) return { error: "missing-player-components" };
+  if (!game) return { error: 'no-game' };
+  const transform = game.ecs.getComponent(game.playerEntityId, 'transform');
+  const physics = game.ecs.getComponent(game.playerEntityId, 'physics');
+  if (!transform || !physics) return { error: 'missing-player-components' };
 
   const spawnCollision = game.world.collidesPlayer(
     transform.position.x,
@@ -47,15 +47,17 @@ const metrics = await page.evaluate(() => {
       moon: Number(lighting.moonLight.intensity.toFixed(3)),
       ambient: Number(lighting.ambientLight.intensity.toFixed(3)),
       hemisphere: Number(lighting.hemisphereLight.intensity.toFixed(3)),
-      skyExposure: Number(game.world.getSkyExposureAt(position.x, position.y + 1.6, position.z, 56).toFixed(3))
+      skyExposure: Number(
+        game.world.getSkyExposureAt(position.x, position.y + 1.6, position.z, 56).toFixed(3)
+      )
     };
   };
 
   dayNight.timeSeconds = cycle * 0.25;
-  const noonOutside = captureLighting("noonOutside", transform.position);
+  const noonOutside = captureLighting('noonOutside', transform.position);
 
   dayNight.timeSeconds = cycle * 0.75;
-  const midnightOutside = captureLighting("midnightOutside", transform.position);
+  const midnightOutside = captureLighting('midnightOutside', transform.position);
 
   const cavePosition = {
     x: transform.position.x,
@@ -63,7 +65,7 @@ const metrics = await page.evaluate(() => {
     z: transform.position.z
   };
   dayNight.timeSeconds = cycle * 0.75;
-  const midnightCave = captureLighting("midnightCave", cavePosition);
+  const midnightCave = captureLighting('midnightCave', cavePosition);
 
   return {
     spawnCollision,

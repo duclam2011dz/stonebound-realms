@@ -1,18 +1,18 @@
-import fs from "node:fs";
-import { chromium } from "playwright";
+import fs from 'node:fs';
+import { chromium } from 'playwright';
 
 const browser = await chromium.launch({
   headless: true,
-  args: ["--use-gl=angle", "--use-angle=swiftshader"]
+  args: ['--use-gl=angle', '--use-angle=swiftshader']
 });
 const page = await browser.newPage();
-await page.goto("http://127.0.0.1:4173/game.html", { waitUntil: "domcontentloaded" });
+await page.goto('http://127.0.0.1:4173/game.html', { waitUntil: 'domcontentloaded' });
 await page.waitForTimeout(1500);
 
 const metrics = await page.evaluate(() => {
   const game = window.__game;
-  if (!game) return { error: "no game" };
-  const transform = game.ecs.getComponent(game.playerEntityId, "transform");
+  if (!game) return { error: 'no game' };
+  const transform = game.ecs.getComponent(game.playerEntityId, 'transform');
   const px = Math.floor(transform.position.x);
   const pz = Math.floor(transform.position.z);
 
@@ -50,6 +50,9 @@ const metrics = await page.evaluate(() => {
   };
 });
 
-fs.mkdirSync("C:/Users/Admin/.codex/memories/web-terrain-metrics", { recursive: true });
-fs.writeFileSync("C:/Users/Admin/.codex/memories/web-terrain-metrics/metrics.json", JSON.stringify(metrics, null, 2));
+fs.mkdirSync('C:/Users/Admin/.codex/memories/web-terrain-metrics', { recursive: true });
+fs.writeFileSync(
+  'C:/Users/Admin/.codex/memories/web-terrain-metrics/metrics.json',
+  JSON.stringify(metrics, null, 2)
+);
 await browser.close();

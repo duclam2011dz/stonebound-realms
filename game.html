@@ -1,39 +1,42 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Stonebound Realms - In Game</title>
-  <link rel="stylesheet" href="./game.css" />
-  <script async src="https://unpkg.com/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "https://unpkg.com/three@0.161.0/build/three.module.js"
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stonebound Realms - In Game</title>
+    <link rel="stylesheet" href="./game.css" />
+    <script async src="https://unpkg.com/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.161.0/build/three.module.js"
+        }
       }
-    }
-  </script>
-</head>
-<body>
-  <div id="ui">
-    <div id="crosshair"></div>
-    <div id="breakProgress" class="is-hidden"><div id="breakProgressFill"></div></div>
-    <div id="hotbar"></div>
-    <div id="help">Click to lock mouse | WASD move | Space jump | E inventory | 1-9 select slot | Hold LMB break | RMB place | R reload chunks | T chat | /time /tp /effect /gamemode /biome /give</div>
-    <div id="chatRoot" class="chat-root is-hidden">
-      <div id="chatLog" class="chat-log"></div>
-      <div id="chatInputRow" class="chat-input-row is-hidden">
-        <span class="chat-prompt">&gt;</span>
-        <input id="chatInput" class="chat-input" type="text" maxlength="180" autocomplete="off" />
+    </script>
+  </head>
+  <body>
+    <div id="ui">
+      <div id="crosshair"></div>
+      <div id="breakProgress" class="is-hidden"><div id="breakProgressFill"></div></div>
+      <div id="hotbar"></div>
+      <div id="help">
+        Click to lock mouse | WASD move | Space jump | E inventory | 1-9 select slot | Hold LMB
+        break | RMB place | R reload chunks | T chat | /time /tp /effect /gamemode /biome /give
+      </div>
+      <div id="chatRoot" class="chat-root is-hidden">
+        <div id="chatLog" class="chat-log"></div>
+        <div id="chatInputRow" class="chat-input-row is-hidden">
+          <span class="chat-prompt">&gt;</span>
+          <input id="chatInput" class="chat-input" type="text" maxlength="180" autocomplete="off" />
+        </div>
+      </div>
+      <div id="inventoryOverlay" class="inventory-overlay is-hidden">
+        <div class="inventory-panel">
+          <h2 class="inventory-title">Inventory</h2>
+          <div id="inventoryGrid" class="inventory-grid"></div>
+        </div>
       </div>
     </div>
-    <div id="inventoryOverlay" class="inventory-overlay is-hidden">
-      <div class="inventory-panel">
-        <h2 class="inventory-title">Inventory</h2>
-        <div id="inventoryGrid" class="inventory-grid"></div>
-      </div>
-    </div>
-  </div>
-  <script type="module" src="./src/pages/game/gamePage.js"></script>
-</body>
+    <script type="module" src="./src/pages/game/gamePage.ts"></script>
+  </body>
 </html>
