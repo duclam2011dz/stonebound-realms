@@ -1,4 +1,4 @@
-import type * as THREE from 'three';
+import * as THREE from 'three';
 import { COMPONENT_PHYSICS, COMPONENT_TRANSFORM } from '../../ecs/components';
 import type { ECSWorld } from '../../ecs/ECSWorld';
 import type { InventoryState } from '../../inventory/InventoryState';
@@ -10,6 +10,8 @@ import type { GameModeSystem } from '../../systems/GameModeSystem';
 import type { DayNightSystem } from '../../systems/DayNightSystem';
 import type { ChunkStreamingSystem } from '../../systems/ChunkStreamingSystem';
 import type { CameraSystem } from '../../systems/CameraSystem';
+import type { MobSystem } from '../../systems/MobSystem';
+import { isValidMobType } from '../../mobs/mobDefinitions';
 
 type CommandResult = { handled: boolean; ok?: boolean; message?: string };
 
@@ -18,6 +20,7 @@ type CommandSystems = {
   chunks: ChunkStreamingSystem;
   camera: CameraSystem;
   gamemode: GameModeSystem;
+  mobs: MobSystem;
 };
 
 type CommandServiceOptions = {
@@ -76,6 +79,8 @@ export class GameCommandService {
     if (commandLower === 'biome') return this.executeBiome(parts.slice(1));
     if (commandLower === 'give') return this.executeGive(parts.slice(1));
     if (commandLower === 'gamemode') return this.executeGamemode(parts.slice(1));
+    if (commandLower === 'summon') return this.executeSummon(parts.slice(1));
+    if (commandLower === 'pos' || commandLower === 'position') return this.executePosition();
     return { handled: false };
   }
 
@@ -224,5 +229,50 @@ export class GameCommandService {
       return fail('Unable to change gamemode.');
     }
     return ok(`Gamemode set to ${mode}.`);
+  }
+
+  executePosition(): CommandResult {
+    const transform = this.ecs.getComponent<{ position: THREE.Vector3 }>(
+      this.playerEntityId,
+      COMPONENT_TRANSFORM
+    );
+    if (!transform) return fail('Player transform not found.');
+    const { x, y, z } = transform.position;
+    return ok(`Position: ${x.toFixed(2)} ${y.toFixed(2)} ${z.toFixed(2)}`);
+  }
+
+  executeSummon(args: string[]): CommandResult {
+    if (args.length !== 4) {
+      return fail('Usage: /summon <mob> <x> <y> <z>');
+    }
+    const [mobRaw, xArg, yArg, zArg] = args;
+    if (!mobRaw || !xArg || !yArg || !zArg) {
+      return fail('Usage: /summon <mob> <x> <y> <z>');
+    }
+    const mobName = mobRaw.toLowerCase();
+    if (!isValidMobType(mobName)) {
+      return fail('Usage: /summon <mob> <x> <y> <z>');
+    }
+
+    const transform = this.ecs.getComponent<{ position: THREE.Vector3 }>(
+      this.playerEntityId,
+      COMPONENT_TRANSFORM
+    );
+    if (!transform) return fail('Player transform not found.');
+
+    const nextX = parseRelativeCoordinate(xArg, transform.position.x);
+    const nextY = parseRelativeCoordinate(yArg, transform.position.y);
+    const nextZ = parseRelativeCoordinate(zArg, transform.position.z);
+    if (nextX === null || nextY === null || nextZ === null) {
+      return fail('Usage: /summon <mob> <x> <y> <z>');
+    }
+
+    this.world.ensureChunksAroundWorld(Math.floor(nextX), Math.floor(nextZ), 1);
+    const spawn = new THREE.Vector3(nextX, nextY, nextZ);
+    const entityId = this.systems.mobs.spawnMob(mobName, spawn, { ignoreCap: true });
+    if (!entityId) return fail('Unable to summon mob (space blocked).');
+    return ok(
+      `Summoned ${mobName} at ${nextX.toFixed(2)} ${nextY.toFixed(2)} ${nextZ.toFixed(2)}.`
+    );
   }
 }

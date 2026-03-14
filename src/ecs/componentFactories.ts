@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import type { MobType } from '../mobs/mobDefinitions';
+import type { MobRenderParts } from '../mobs/createMobModel';
 
 export type TransformComponent = {
   position: THREE.Vector3;
@@ -22,6 +24,23 @@ export type ControllerComponent = {
 
 export type GamemodeComponent = {
   mode: string;
+};
+
+export type MobComponent = {
+  type: MobType;
+};
+
+export type MobAIComponent = {
+  path: Array<{ x: number; z: number }>;
+  repathTimer: number;
+  wanderTimer: number;
+  stuckTimer: number;
+  lastPosition: THREE.Vector3;
+  walkPhase: number;
+};
+
+export type MobRenderComponent = {
+  parts: MobRenderParts;
 };
 
 export type PhysicsConfig = {
@@ -62,4 +81,23 @@ export function createGamemode(initialMode = 'survival'): GamemodeComponent {
   return {
     mode: initialMode
   };
+}
+
+export function createMob(type: MobType): MobComponent {
+  return { type };
+}
+
+export function createMobAI(): MobAIComponent {
+  return {
+    path: [],
+    repathTimer: 0,
+    wanderTimer: 0,
+    stuckTimer: 0,
+    lastPosition: new THREE.Vector3(),
+    walkPhase: 0
+  };
+}
+
+export function createMobRender(parts: MobRenderParts): MobRenderComponent {
+  return { parts };
 }

@@ -50,6 +50,7 @@ export class SystemOrchestrator {
     this.systems.camera.update(this.ecs, this.playerEntityId, this.camera);
     this.systems.dayNight.update(dt, transform.position);
     this.systems.targeting.update();
+    this.systems.mobs.update(dt);
 
     const actions = this.input.consumeActions();
     if (actions.reloadChunks) this.systems.chunks.force(transform.position);

@@ -114,7 +114,12 @@ export class Game {
         this.chatInputOpen = isOpen;
         this.syncInputCapture();
       },
-      requestPointerUnlock: () => document.exitPointerLock?.()
+      requestPointerUnlock: () => document.exitPointerLock?.(),
+      getChunkStats: () => ({
+        loaded: this.world.storage.loadedChunks.size,
+        pending: this.world.getPendingChunkCount(),
+        center: { x: this.world.currentChunkX, z: this.world.currentChunkZ }
+      })
     });
 
     this.bindEvents();
@@ -231,6 +236,7 @@ export class Game {
         dayNight: this.systems.dayNight.getTimeState(),
         nightVision: this.systems.dayNight.isNightVisionEnabled()
       },
+      mobs: this.systems.mobs.getMobPositions(),
       hotbar: Array.from({ length: 9 }, (_, index) => {
         const slot = this.inventoryState.getSlot(index);
         return slot ? { blockType: slot.blockType, quantity: slot.quantity } : null;

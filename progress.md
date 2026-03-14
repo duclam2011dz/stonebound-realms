@@ -334,3 +334,17 @@ Update 2026-03-13 (strict TS cleanup + typecheck):
 - pm run typecheck: pass.
 - pm run lint: pass (removed unused ChunkTask import).
 - Playwright validation run via Vite dev server; screenshots/state saved in output/web-game (shot-0..2, state-0..2). No new console errors from Vite run; note prior http.server run left output/web-game/errors-0.json with a MIME-type module warning.
+
+Update 2026-03-14 (passive mobs + AI + debug commands):
+
+- Added passive mob system (pig/cow/chicken/sheep) with local A\* wandering, simple avoidance, and procedural mob atlas.
+- Implemented natural spawning rules (distance, biome, grass, daylight >= 9, space clear, group size, cap 20; /summon bypasses cap).
+- New debug commands: /summon, /pos, /position; /chunk stream in chat; slash key opens chat with '/' prefilled.
+- render_game_to_text now includes mob positions.
+- Added MobSystem, mob definitions/model factory, and ECS mob components.
+
+Tests:
+
+- npm run typecheck (pass)
+- npm run lint (pass)
+- Playwright skill client run via Vite dev server; screenshots in output/web-game (shot-0..2).

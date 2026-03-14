@@ -13,6 +13,11 @@ type ChatOverlayOptions = {
   onCommand?: (text: string) => CommandResult;
   onInputFocusChanged?: (isOpen: boolean) => void;
   requestPointerUnlock?: () => void;
+  getChunkStats?: () => {
+    loaded: number;
+    pending: number;
+    center: { x: number; z: number };
+  } | null;
 };
 
 export class ChatOverlay {
@@ -25,11 +30,17 @@ export class ChatOverlay {
   onCommand: ((text: string) => CommandResult) | undefined;
   onInputFocusChanged: ((isOpen: boolean) => void) | undefined;
   requestPointerUnlock: (() => void) | undefined;
+  getChunkStats:
+    | (() => { loaded: number; pending: number; center: { x: number; z: number } } | null)
+    | undefined;
   isInputOpen: boolean;
   fpsStreaming: boolean;
+  chunkStreaming: boolean;
   fpsLine: HTMLElement | null;
+  chunkLine: HTMLElement | null;
   showUntil: number;
   lastFpsUpdate: number;
+  lastChunkUpdate: number;
 
   constructor({
     rootElement,
@@ -40,7 +51,8 @@ export class ChatOverlay {
     onHelpToggle,
     onCommand,
     onInputFocusChanged,
-    requestPointerUnlock
+    requestPointerUnlock,
+    getChunkStats
   }: ChatOverlayOptions) {
     this.rootElement = rootElement;
     this.logElement = logElement;
@@ -51,12 +63,16 @@ export class ChatOverlay {
     this.onCommand = onCommand;
     this.onInputFocusChanged = onInputFocusChanged;
     this.requestPointerUnlock = requestPointerUnlock;
+    this.getChunkStats = getChunkStats;
 
     this.isInputOpen = false;
     this.fpsStreaming = false;
+    this.chunkStreaming = false;
     this.fpsLine = null;
+    this.chunkLine = null;
     this.showUntil = 0;
     this.lastFpsUpdate = 0;
+    this.lastChunkUpdate = 0;
 
     this.bindEvents();
     this.syncVisibility();
@@ -69,6 +85,12 @@ export class ChatOverlay {
         if (isChatInputFocused) return;
         event.preventDefault();
         this.toggleInput();
+        return;
+      }
+      if ((event.code === 'Slash' || event.key === '/') && !event.repeat) {
+        if (isChatInputFocused) return;
+        event.preventDefault();
+        this.openInputWithText('/');
         return;
       }
 
@@ -129,12 +151,20 @@ export class ChatOverlay {
   }
 
   openInput(): void {
+    this.openInputWithText('');
+  }
+
+  openInputWithText(text: string): void {
     this.isInputOpen = true;
     this.requestPointerUnlock?.();
     this.onInputFocusChanged?.(true);
     this.inputRowElement?.classList.remove('is-hidden');
     this.rootElement?.classList.remove('is-hidden');
-    this.inputElement?.focus();
+    if (this.inputElement) {
+      this.inputElement.value = text;
+      this.inputElement.focus();
+      this.inputElement.setSelectionRange(text.length, text.length);
+    }
     this.syncVisibility();
   }
 
@@ -217,6 +247,27 @@ export class ChatOverlay {
       return;
     }
 
+    if (command === 'chunk') {
+      const mode = (parts[1] ?? '').toLowerCase();
+      if (mode === 'on') {
+        this.chunkStreaming = true;
+        this.postSystemMessage('Chunk stream enabled.');
+        this.ensureChunkLine();
+        return;
+      }
+      if (mode === 'off') {
+        this.chunkStreaming = false;
+        if (this.chunkLine) {
+          this.chunkLine.remove();
+          this.chunkLine = null;
+        }
+        this.postSystemMessage('Chunk stream disabled.');
+        return;
+      }
+      this.postErrorMessage('Usage: /chunk on|off');
+      return;
+    }
+
     if (command === 'seed') {
       this.postSystemMessage(`Seed: ${this.getSeed()}`);
       return;
@@ -240,6 +291,11 @@ export class ChatOverlay {
     this.fpsLine = this.appendLine('[debug] FPS: ...', 'chat-fps');
   }
 
+  ensureChunkLine(): void {
+    if (this.chunkLine) return;
+    this.chunkLine = this.appendLine('[debug] Chunks: ...', 'chat-fps');
+  }
+
   updateFrame(nowMs: number, dt: number): void {
     if (this.fpsStreaming) {
       if (nowMs - this.lastFpsUpdate >= FPS_UPDATE_INTERVAL_MS) {
@@ -249,11 +305,26 @@ export class ChatOverlay {
         if (this.fpsLine) this.fpsLine.textContent = `[debug] FPS: ${fps.toFixed(1)}`;
       }
     }
+    if (this.chunkStreaming) {
+      if (nowMs - this.lastChunkUpdate >= FPS_UPDATE_INTERVAL_MS) {
+        this.lastChunkUpdate = nowMs;
+        const stats = this.getChunkStats?.();
+        this.ensureChunkLine();
+        if (this.chunkLine) {
+          if (stats) {
+            this.chunkLine.textContent = `[debug] Chunks: ${stats.loaded} loaded | pending: ${stats.pending} | center: ${stats.center.x}, ${stats.center.z}`;
+          } else {
+            this.chunkLine.textContent = '[debug] Chunks: ...';
+          }
+        }
+      }
+    }
     this.syncVisibility();
   }
 
   syncVisibility(): void {
-    const shouldShow = this.isInputOpen || this.fpsStreaming || Date.now() < this.showUntil;
+    const shouldShow =
+      this.isInputOpen || this.fpsStreaming || this.chunkStreaming || Date.now() < this.showUntil;
     this.rootElement?.classList.toggle('is-hidden', !shouldShow);
   }
 }
