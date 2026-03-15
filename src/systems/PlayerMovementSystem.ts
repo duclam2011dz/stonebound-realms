@@ -67,6 +67,8 @@ export class PlayerMovementSystem {
     buildMovementVector(this.forward, this.right, this.movement, transform.yaw, this.input);
     const hasWishMove = this.movement.lengthSq() > 0;
     if (hasWishMove) this.movement.normalize();
+    const movingBackward = this.input.isKeyDown('KeyS') && !this.input.isKeyDown('KeyW');
+    const wishSpeed = physics.moveSpeed * (movingBackward ? 2 / 3 : 1);
 
     if (physics.onGround) {
       applyGroundFriction(physics.velocity, this.settings.groundFriction, dt);
@@ -74,7 +76,7 @@ export class PlayerMovementSystem {
         applyAcceleration(
           physics.velocity,
           this.movement,
-          physics.moveSpeed,
+          wishSpeed,
           this.settings.groundAcceleration,
           dt
         );
@@ -85,7 +87,7 @@ export class PlayerMovementSystem {
         applyAcceleration(
           physics.velocity,
           this.movement,
-          physics.moveSpeed,
+          wishSpeed,
           this.settings.airAcceleration,
           dt
         );

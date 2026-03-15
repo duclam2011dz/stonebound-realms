@@ -54,7 +54,10 @@ export function bindInputEvents({
       return;
     }
 
-    if (event.button === 0) state.breakHeld = true;
+    if (event.button === 0) {
+      state.breakHeld = true;
+      state.attackRequested = true;
+    }
     if (event.button === 2) state.placeRequested = true;
   });
 
@@ -68,6 +71,7 @@ export function bindInputEvents({
   document.addEventListener('pointerlockchange', () => {
     if (!isPointerLocked()) {
       state.breakHeld = false;
+      state.attackRequested = false;
     }
     onPointerLockChange(isPointerLocked());
   });

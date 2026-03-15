@@ -9,7 +9,9 @@ import {
   BLOCK_ID_SAND,
   BLOCK_ID_STONE,
   BLOCK_ID_WOOD,
-  BLOCK_ID_LAMP
+  BLOCK_ID_LAMP,
+  BLOCK_ID_PLANK,
+  BLOCK_ID_CRAFTING_TABLE
 } from '../BlockPalette';
 
 type BlockTile = { x: number; y: number };
@@ -49,6 +51,8 @@ function getFaceTile(blockId: number, axis: number, sign: number): BlockTile {
   if (blockId === BLOCK_ID_STONE) return BLOCK_FACE_TILES.stone.all;
   if (blockId === BLOCK_ID_DIRT) return BLOCK_FACE_TILES.dirt.all;
   if (blockId === BLOCK_ID_LAMP) return BLOCK_FACE_TILES.lamp.all;
+  if (blockId === BLOCK_ID_PLANK) return BLOCK_FACE_TILES.plank.all;
+  if (blockId === BLOCK_ID_CRAFTING_TABLE) return BLOCK_FACE_TILES.crafting_table.all;
   return BLOCK_FACE_TILES.dirt.all;
 }
 

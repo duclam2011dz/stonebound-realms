@@ -2,6 +2,7 @@ export type InputActions = {
   breakHeld: boolean;
   placeBlock: boolean;
   reloadChunks: boolean;
+  attackRequested: boolean;
 };
 
 export class InputState {
@@ -11,6 +12,7 @@ export class InputState {
   breakHeld: boolean;
   placeRequested: boolean;
   reloadRequested: boolean;
+  attackRequested: boolean;
   selectedHotbarSlot: number;
 
   constructor() {
@@ -20,6 +22,7 @@ export class InputState {
     this.breakHeld = false;
     this.placeRequested = false;
     this.reloadRequested = false;
+    this.attackRequested = false;
     this.selectedHotbarSlot = 0;
   }
 
@@ -39,10 +42,12 @@ export class InputState {
     const actions = {
       breakHeld: this.breakHeld,
       placeBlock: this.placeRequested,
-      reloadChunks: this.reloadRequested
+      reloadChunks: this.reloadRequested,
+      attackRequested: this.attackRequested
     };
     this.placeRequested = false;
     this.reloadRequested = false;
+    this.attackRequested = false;
     return actions;
   }
 
@@ -53,5 +58,6 @@ export class InputState {
     this.breakHeld = false;
     this.placeRequested = false;
     this.reloadRequested = false;
+    this.attackRequested = false;
   }
 }

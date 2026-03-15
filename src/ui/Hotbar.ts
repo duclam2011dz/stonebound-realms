@@ -1,6 +1,11 @@
 import { BLOCK_ATLAS, BLOCK_FACE_TILES } from '../config/constants';
 import { getProceduralAtlasAssets } from '../textures/proceduralBlockAtlas';
 import type { InventoryState } from '../inventory/InventoryState';
+import { getFoodDefinition } from '../inventory/foodDefinitions';
+import { getItemDefinition } from '../inventory/itemDefinitions';
+import type { InventorySlot } from '../inventory/itemTypes';
+import { isBlockSlot, isFoodSlot, isItemSlot } from '../inventory/itemTypes';
+import { getItemTooltip } from '../inventory/itemTooltip';
 import type { BlockType } from '../world/services/BlockPalette';
 
 const FALLBACK_COLORS = {
@@ -10,7 +15,9 @@ const FALLBACK_COLORS = {
   wood: '#7b5a39',
   leaf: '#4f9f4e',
   sand: '#d7c28a',
-  lamp: '#f3d16c'
+  lamp: '#f3d16c',
+  plank: '#b8895f',
+  crafting_table: '#b07a4f'
 };
 
 type BlockTile = { x: number; y: number };
@@ -24,6 +31,8 @@ function getIconTile(blockType: BlockType | null): BlockTile | null {
   if (blockType === 'dirt') return BLOCK_FACE_TILES.dirt.all;
   if (blockType === 'sand') return BLOCK_FACE_TILES.sand.all;
   if (blockType === 'lamp') return BLOCK_FACE_TILES.lamp.all;
+  if (blockType === 'plank') return BLOCK_FACE_TILES.plank.all;
+  if (blockType === 'crafting_table') return BLOCK_FACE_TILES.crafting_table.all;
   return null;
 }
 
@@ -73,20 +82,40 @@ export class Hotbar {
     }
   }
 
-  applyAtlasSwatch(swatchElement: HTMLElement, blockType: BlockType | null): void {
-    const tile = getIconTile(blockType);
-    if (!tile) {
+  applyAtlasSwatch(swatchElement: HTMLElement, slot: InventorySlot | null): void {
+    if (!slot) {
       swatchElement.style.backgroundImage = '';
-      swatchElement.style.backgroundColor = blockType
-        ? FALLBACK_COLORS[blockType] || '#ffffff'
-        : 'transparent';
+      swatchElement.style.backgroundColor = 'transparent';
       return;
     }
 
-    swatchElement.style.backgroundImage = `url(${this.proceduralAtlasImageUrl})`;
-    swatchElement.style.backgroundSize = `${BLOCK_ATLAS.columns * 100}% ${BLOCK_ATLAS.rows * 100}%`;
-    swatchElement.style.backgroundPosition = `${(tile.x / (BLOCK_ATLAS.columns - 1)) * 100}% ${(tile.y / (BLOCK_ATLAS.rows - 1)) * 100}%`;
-    swatchElement.style.backgroundColor = 'transparent';
+    if (isFoodSlot(slot)) {
+      const food = getFoodDefinition(slot.foodType);
+      swatchElement.style.backgroundImage = '';
+      swatchElement.style.backgroundColor = food.swatch;
+      return;
+    }
+
+    if (isItemSlot(slot)) {
+      const item = getItemDefinition(slot.itemType);
+      swatchElement.style.backgroundImage = '';
+      swatchElement.style.backgroundColor = item.swatch;
+      return;
+    }
+
+    if (isBlockSlot(slot)) {
+      const tile = getIconTile(slot.blockType);
+      if (!tile) {
+        swatchElement.style.backgroundImage = '';
+        swatchElement.style.backgroundColor = FALLBACK_COLORS[slot.blockType] || '#ffffff';
+        return;
+      }
+
+      swatchElement.style.backgroundImage = `url(${this.proceduralAtlasImageUrl})`;
+      swatchElement.style.backgroundSize = `${BLOCK_ATLAS.columns * 100}% ${BLOCK_ATLAS.rows * 100}%`;
+      swatchElement.style.backgroundPosition = `${(tile.x / (BLOCK_ATLAS.columns - 1)) * 100}% ${(tile.y / (BLOCK_ATLAS.rows - 1)) * 100}%`;
+      swatchElement.style.backgroundColor = 'transparent';
+    }
   }
 
   refreshSlots(): void {
@@ -97,12 +126,13 @@ export class Hotbar {
       const swatch = slotElement.querySelector<HTMLElement>('.hotbar-swatch');
       const count = slotElement.querySelector<HTMLElement>('.hotbar-count');
       if (!swatch) continue;
-      this.applyAtlasSwatch(swatch, slotData?.blockType ?? null);
+      this.applyAtlasSwatch(swatch, slotData);
       if (count) {
         const quantity = slotData?.quantity ?? 0;
-        count.textContent = quantity > 0 ? String(quantity) : '';
+        count.textContent = quantity > 1 ? String(quantity) : '';
       }
       slotElement.classList.toggle('is-empty', !slotData);
+      slotElement.title = slotData ? getItemTooltip(slotData) : '';
     }
   }
 
@@ -117,6 +147,7 @@ export class Hotbar {
   getSelectedBlockType(): BlockType | null {
     const selected = this.inventoryState.getSlot(this.selectedIndex);
     if (!selected || selected.quantity <= 0) return null;
+    if (!isBlockSlot(selected)) return null;
     return selected.blockType;
   }
 
@@ -125,6 +156,14 @@ export class Hotbar {
   }
 
   consumeSelectedBlock(amount = 1): boolean {
+    const selected = this.inventoryState.getSlot(this.selectedIndex);
+    if (!isBlockSlot(selected)) return false;
     return this.inventoryState.removeFromSlot(this.selectedIndex, amount) > 0;
+  }
+
+  getSelectedItem(): InventorySlot | null {
+    const selected = this.inventoryState.getSlot(this.selectedIndex);
+    if (!selected || selected.quantity <= 0) return null;
+    return selected;
   }
 }

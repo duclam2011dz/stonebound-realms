@@ -8,10 +8,13 @@ import { GameModeSystem } from '../../systems/GameModeSystem';
 import { PlayerMovementSystem } from '../../systems/PlayerMovementSystem';
 import { TargetingSystem } from '../../systems/TargetingSystem';
 import { MobSystem } from '../../systems/MobSystem';
+import { CombatSystem } from '../../systems/CombatSystem';
+import { SurvivalSystem } from '../../systems/SurvivalSystem';
 import type { InputController } from '../../core/InputController';
 import type { VoxelWorld } from '../../world/VoxelWorld';
 import type { ECSWorld } from '../../ecs/ECSWorld';
 import type { LightingRig } from '../../core/render/setupLighting';
+import type { InventoryState } from '../../inventory/InventoryState';
 
 type CreateSystemsOptions = {
   scene: THREE.Scene;
@@ -22,6 +25,8 @@ type CreateSystemsOptions = {
   lighting: LightingRig;
   ecs: ECSWorld;
   playerEntityId: number;
+  inventoryState: InventoryState;
+  onPlayerDeath?: () => void;
 };
 
 export type GameSystems = {
@@ -33,6 +38,8 @@ export type GameSystems = {
   targeting: TargetingSystem;
   interaction: BlockInteractionSystem;
   mobs: MobSystem;
+  survival: SurvivalSystem;
+  combat: CombatSystem;
 };
 
 export function createSystems({
@@ -43,7 +50,9 @@ export function createSystems({
   settings,
   lighting,
   ecs,
-  playerEntityId
+  playerEntityId,
+  inventoryState,
+  onPlayerDeath
 }: CreateSystemsOptions): GameSystems {
   const dayNight = new DayNightSystem({
     scene,
@@ -67,6 +76,8 @@ export function createSystems({
       dayNight,
       settings,
       playerEntityId
-    })
+    }),
+    survival: new SurvivalSystem(ecs, playerEntityId, onPlayerDeath ?? null),
+    combat: new CombatSystem(ecs, playerEntityId, camera, inventoryState)
   };
 }

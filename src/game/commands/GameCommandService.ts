@@ -12,6 +12,8 @@ import type { ChunkStreamingSystem } from '../../systems/ChunkStreamingSystem';
 import type { CameraSystem } from '../../systems/CameraSystem';
 import type { MobSystem } from '../../systems/MobSystem';
 import { isValidMobType } from '../../mobs/mobDefinitions';
+import { isValidFoodType } from '../../inventory/foodDefinitions';
+import { isValidItemType } from '../../inventory/itemDefinitions';
 
 type CommandResult = { handled: boolean; ok?: boolean; message?: string };
 
@@ -195,7 +197,7 @@ export class GameCommandService {
 
     const item = String(args[0] ?? '').toLowerCase();
     const amount = Math.floor(Number(args[1]));
-    if (!isValidBlockType(item) || !Number.isFinite(amount) || amount <= 0) {
+    if (!Number.isFinite(amount) || amount <= 0) {
       return fail('Usage: /give <item> <amount>');
     }
 
@@ -203,11 +205,31 @@ export class GameCommandService {
       return fail('Inventory is not available.');
     }
 
-    const remaining = this.inventoryState.addBlock(item, amount);
-    const added = amount - remaining;
-    if (added <= 0) return fail('Inventory full.');
-    if (remaining > 0) return ok(`Gave ${added} ${item}. Inventory full for ${remaining}.`);
-    return ok(`Gave ${added} ${item}.`);
+    if (isValidBlockType(item)) {
+      const remaining = this.inventoryState.addBlock(item, amount);
+      const added = amount - remaining;
+      if (added <= 0) return fail('Inventory full.');
+      if (remaining > 0) return ok(`Gave ${added} ${item}. Inventory full for ${remaining}.`);
+      return ok(`Gave ${added} ${item}.`);
+    }
+
+    if (isValidFoodType(item)) {
+      const remaining = this.inventoryState.addFood(item, amount);
+      const added = amount - remaining;
+      if (added <= 0) return fail('Inventory full.');
+      if (remaining > 0) return ok(`Gave ${added} ${item}. Inventory full for ${remaining}.`);
+      return ok(`Gave ${added} ${item}.`);
+    }
+
+    if (isValidItemType(item)) {
+      const remaining = this.inventoryState.addItem({ kind: 'item', itemType: item }, amount);
+      const added = amount - remaining;
+      if (added <= 0) return fail('Inventory full.');
+      if (remaining > 0) return ok(`Gave ${added} ${item}. Inventory full for ${remaining}.`);
+      return ok(`Gave ${added} ${item}.`);
+    }
+
+    return fail('Usage: /give <item> <amount>');
   }
 
   executeGamemode(args: string[]): CommandResult {

@@ -148,9 +148,9 @@ export class VoxelWorld {
 
   applyBlockMaterialViewMode(): void {
     this.blockMaterial.transparent = this.spectatorViewEnabled;
-    this.blockMaterial.opacity = this.spectatorViewEnabled ? 0.18 : 1;
-    this.blockMaterial.depthWrite = !this.spectatorViewEnabled;
-    this.blockMaterial.side = this.spectatorViewEnabled ? THREE.DoubleSide : THREE.FrontSide;
+    this.blockMaterial.opacity = this.spectatorViewEnabled ? 0.28 : 1;
+    this.blockMaterial.depthWrite = true;
+    this.blockMaterial.side = THREE.FrontSide;
     this.blockMaterial.needsUpdate = true;
   }
 

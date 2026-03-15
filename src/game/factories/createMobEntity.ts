@@ -32,7 +32,11 @@ export function createMobEntity({
 }: CreateMobEntityOptions): number {
   const entityId = ecs.createEntity();
   ecs.addComponent(entityId, COMPONENT_TRANSFORM, createTransform(position));
-  ecs.addComponent(entityId, COMPONENT_MOB, createMob(definition.type as MobType));
+  ecs.addComponent(
+    entityId,
+    COMPONENT_MOB,
+    createMob(definition.type as MobType, definition.maxHealth)
+  );
   ecs.addComponent(entityId, COMPONENT_MOB_AI, createMobAI());
 
   const parts = createMobModel(definition, material, atlas);

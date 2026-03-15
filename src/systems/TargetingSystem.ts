@@ -69,6 +69,14 @@ export class TargetingSystem {
     this.updateBreakOverlay(block);
   }
 
+  clear(): void {
+    this.currentHit = null;
+    this.breakState = null;
+    this.highlightMesh.visible = false;
+    this.breakMesh.visible = false;
+    this.activeBreakStage = -1;
+  }
+
   setBreakState(state: BreakState | null): void {
     this.breakState = state;
     if (!state) {

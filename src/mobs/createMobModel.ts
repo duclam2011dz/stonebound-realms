@@ -6,6 +6,7 @@ export type MobRenderParts = {
   body: THREE.Mesh;
   head: THREE.Mesh;
   legs: THREE.Mesh[];
+  material: THREE.MeshLambertMaterial;
 };
 
 function applyBoxUVs(
@@ -49,8 +50,11 @@ export function createMobModel(
 ): MobRenderParts {
   const root = new THREE.Group();
 
-  const body = createPart(definition.body, definition, material, atlas);
-  const head = createPart(definition.head, definition, material, atlas);
+  const mobMaterial = material.clone();
+  mobMaterial.color.set(0xffffff);
+
+  const body = createPart(definition.body, definition, mobMaterial, atlas);
+  const head = createPart(definition.head, definition, mobMaterial, atlas);
   const legSize = definition.leg.size;
   const legHeight = definition.leg.height;
   const legGeometry = new THREE.BoxGeometry(legSize, legHeight, legSize);
@@ -62,10 +66,10 @@ export function createMobModel(
     atlas.rows
   );
   const legs = [
-    new THREE.Mesh(legGeometry, material),
-    new THREE.Mesh(legGeometry, material),
-    new THREE.Mesh(legGeometry, material),
-    new THREE.Mesh(legGeometry, material)
+    new THREE.Mesh(legGeometry, mobMaterial),
+    new THREE.Mesh(legGeometry, mobMaterial),
+    new THREE.Mesh(legGeometry, mobMaterial),
+    new THREE.Mesh(legGeometry, mobMaterial)
   ];
 
   const bodyCenterY = legHeight + definition.body.height * 0.5;
@@ -85,5 +89,5 @@ export function createMobModel(
   root.add(head);
   for (const leg of legs) root.add(leg);
 
-  return { root, body, head, legs };
+  return { root, body, head, legs, material: mobMaterial };
 }

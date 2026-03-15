@@ -52,6 +52,7 @@ export class MobSystem {
   spawnTimer: number;
   material: THREE.MeshLambertMaterial;
   atlas: { columns: number; rows: number };
+  tempVec: THREE.Vector3;
 
   constructor(options: {
     scene: THREE.Scene;
@@ -77,6 +78,7 @@ export class MobSystem {
     atlasAssets.texture.generateMipmaps = false;
     this.material = new THREE.MeshLambertMaterial({ map: atlasAssets.texture });
     this.atlas = { columns: 4, rows: 4 };
+    this.tempVec = new THREE.Vector3();
   }
 
   update(dt: number): void {
@@ -87,6 +89,11 @@ export class MobSystem {
     }
 
     const surfaceCache = new Map<string, number>();
+    const playerTransform = this.ecs.getComponent<TransformComponent>(
+      this.playerEntityId,
+      COMPONENT_TRANSFORM
+    );
+    const playerPosition = playerTransform?.position ?? null;
     const mobEntities = this.ecs.getEntitiesWith([
       COMPONENT_MOB,
       COMPONENT_MOB_AI,
@@ -106,7 +113,17 @@ export class MobSystem {
       const render = this.ecs.getComponent<MobRenderComponent>(entityId, COMPONENT_MOB_RENDER);
       if (!transform || !mob || !ai || !render) continue;
       const definition = getMobDefinition(mob.type);
-      this.updateMob(entityId, transform, ai, render, definition, positions, surfaceCache, dt);
+      this.updateMob(
+        entityId,
+        transform,
+        ai,
+        render,
+        definition,
+        positions,
+        surfaceCache,
+        dt,
+        playerPosition
+      );
     }
   }
 
@@ -204,8 +221,28 @@ export class MobSystem {
     definition: MobDefinition,
     mobPositions: Array<{ id: number; position: THREE.Vector3 }>,
     surfaceCache: Map<string, number>,
-    dt: number
+    dt: number,
+    playerPosition: THREE.Vector3 | null
   ): void {
+    const mob = this.ecs.getComponent<MobComponent>(entityId, COMPONENT_MOB);
+    if (mob) {
+      if (mob.hitFlashTimer > 0) {
+        mob.hitFlashTimer = Math.max(0, mob.hitFlashTimer - dt);
+        render.parts.material.color.set(0xff6a6a);
+      } else {
+        render.parts.material.color.set(0xffffff);
+      }
+
+      if (mob.knockback.lengthSq() > 0.0004) {
+        this.tempVec.copy(mob.knockback).multiplyScalar(dt);
+        transform.position.add(this.tempVec);
+        mob.knockback.multiplyScalar(0.72);
+        if (mob.knockback.lengthSq() < 0.0004) {
+          mob.knockback.set(0, 0, 0);
+        }
+      }
+    }
+
     const currentX = transform.position.x;
     const currentZ = transform.position.z;
     const groundY = this.getSurfaceY(Math.floor(currentX), Math.floor(currentZ), surfaceCache);
@@ -222,6 +259,45 @@ export class MobSystem {
     } else {
       ai.stuckTimer = 0;
       ai.lastPosition.copy(transform.position);
+    }
+
+    if (ai.panicTimer > 0 && playerPosition) {
+      ai.panicTimer = Math.max(0, ai.panicTimer - dt);
+      ai.panicPhase += dt * 8;
+      const fleeX = transform.position.x - playerPosition.x;
+      const fleeZ = transform.position.z - playerPosition.z;
+      const fleeDist = Math.hypot(fleeX, fleeZ) || 1;
+      const baseDirX = fleeX / fleeDist;
+      const baseDirZ = fleeZ / fleeDist;
+      const baseAngle = Math.atan2(baseDirZ, baseDirX);
+      const jitter = Math.sin(ai.panicPhase) * 0.6;
+      const angle = baseAngle + jitter;
+      const dirX = Math.cos(angle);
+      const dirZ = Math.sin(angle);
+      const speed = definition.speed * 1.8;
+      transform.position.x += dirX * speed * dt;
+      transform.position.z += dirZ * speed * dt;
+      transform.yaw = Math.atan2(dirX, dirZ);
+      const panicGround =
+        groundY >= 0
+          ? groundY
+          : this.getSurfaceY(
+              Math.floor(transform.position.x),
+              Math.floor(transform.position.z),
+              surfaceCache
+            );
+      if (panicGround >= 0) transform.position.y = panicGround + 1;
+      render.parts.root.position.copy(transform.position);
+      render.parts.root.rotation.y = transform.yaw;
+      ai.walkPhase += dt * definition.speed * 8;
+      const swing = Math.sin(ai.walkPhase) * 0.9;
+      if (render.parts.legs.length >= 4) {
+        render.parts.legs[0]!.rotation.x = swing;
+        render.parts.legs[1]!.rotation.x = -swing;
+        render.parts.legs[2]!.rotation.x = -swing;
+        render.parts.legs[3]!.rotation.x = swing;
+      }
+      return;
     }
 
     if ((ai.repathTimer <= 0 || ai.path.length === 0 || ai.stuckTimer > 2) && ai.wanderTimer <= 0) {

@@ -50,5 +50,11 @@ export const BLOCK_FACE_TILES = {
   },
   lamp: {
     all: { x: 2, y: 0 }
+  },
+  plank: {
+    all: { x: 2, y: 1 }
+  },
+  crafting_table: {
+    all: { x: 3, y: 1 }
   }
 };

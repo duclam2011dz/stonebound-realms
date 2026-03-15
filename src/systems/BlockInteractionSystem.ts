@@ -6,6 +6,7 @@ import { GAMEMODE_SPECTATOR, GAMEMODE_SURVIVAL } from '../game/gamemode/gameMode
 import type { InputActions } from '../core/input/InputState';
 import type { Hotbar } from '../ui/Hotbar';
 import type { InventoryState } from '../inventory/InventoryState';
+import type { InventorySlot } from '../inventory/itemTypes';
 import type { GameSettings } from '../config/constants';
 import type { VoxelWorld } from '../world/VoxelWorld';
 import type { VoxelHit } from '../world/services/VoxelRaycaster';
@@ -55,7 +56,8 @@ export class BlockInteractionSystem {
       return null;
     }
 
-    this.updateBreakProgress(actions.breakHeld, hit, dt, inventoryState);
+    const selectedItem = hotbar.getSelectedItem();
+    this.updateBreakProgress(actions.breakHeld, hit, dt, inventoryState, selectedItem);
 
     if (actions.placeBlock && selectedBlockType && hit) {
       const placed = this.world.placeBlockAtHit(
@@ -79,7 +81,8 @@ export class BlockInteractionSystem {
     breakHeld: boolean,
     hit: VoxelHit | null,
     dt: number,
-    inventoryState: InventoryState | null
+    inventoryState: InventoryState | null,
+    selectedItem: InventorySlot | null
   ): void {
     if (!breakHeld || !hit?.block) {
       this.resetBreakState();
@@ -96,7 +99,7 @@ export class BlockInteractionSystem {
     const targetKey = getBlockTargetKey(x, y, z);
     if (targetKey !== this.breakTargetKey) {
       this.breakTargetKey = targetKey;
-      this.breakDurationMs = getBreakDurationMs(blockType);
+      this.breakDurationMs = getBreakDurationMs(blockType, selectedItem);
       this.breakProgress = 0;
     }
 

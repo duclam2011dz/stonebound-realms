@@ -10,10 +10,15 @@
     <div id="ui">
       <div id="crosshair"></div>
       <div id="breakProgress" class="is-hidden"><div id="breakProgressFill"></div></div>
+      <div id="statusBars">
+        <div id="healthBar" class="status-bar status-bar-left" aria-label="Health"></div>
+        <div id="hungerBar" class="status-bar status-bar-right" aria-label="Hunger"></div>
+      </div>
       <div id="hotbar"></div>
       <div id="help">
         Click to lock mouse | WASD move | Space jump | E inventory | 1-9 select slot | Hold LMB
-        break | RMB place | R reload chunks | T chat | /time /tp /effect /gamemode /biome /give
+        break | RMB place / eat | R reload chunks | T chat | /time /tp /effect /gamemode /biome
+        /give
       </div>
       <div id="chatRoot" class="chat-root is-hidden">
         <div id="chatLog" class="chat-log"></div>
@@ -25,7 +30,29 @@
       <div id="inventoryOverlay" class="inventory-overlay is-hidden">
         <div class="inventory-panel">
           <h2 class="inventory-title">Inventory</h2>
-          <div id="inventoryGrid" class="inventory-grid"></div>
+          <div class="inventory-layout">
+            <div class="inventory-main">
+              <div id="inventoryGrid" class="inventory-grid"></div>
+            </div>
+            <div class="crafting-panel">
+              <h3 class="crafting-title">Crafting</h3>
+              <div class="crafting-row">
+                <div id="craftingGrid" class="crafting-grid"></div>
+                <div class="crafting-arrow">→</div>
+                <div id="craftingResult" class="inventory-slot crafting-result"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="deathOverlay" class="death-overlay is-hidden">
+        <div class="death-panel">
+          <h1 class="death-title">You Died</h1>
+          <p class="death-subtitle">Your spirit lingers at spawn.</p>
+          <div class="death-actions">
+            <button id="respawnButton" class="death-button">Respawn</button>
+            <button id="menuButton" class="death-button death-button-secondary">Menu</button>
+          </div>
         </div>
       </div>
     </div>

@@ -6,6 +6,7 @@ import { COMPONENT_PHYSICS, COMPONENT_TRANSFORM } from '../ecs/components';
 import { ECSWorld } from '../ecs/ECSWorld';
 import { InventoryState } from '../inventory/InventoryState';
 import { InventoryUI } from '../inventory/InventoryUI';
+import { CraftingManager } from '../inventory/crafting/CraftingManager';
 import { createInitialInventorySlots } from './factories/createInitialInventorySlots';
 import { createPlayerEntity } from './factories/createPlayerEntity';
 import { createSystems, type GameSystems } from './factories/createSystems';
@@ -30,12 +31,17 @@ export class Game {
   appliedRenderDistance: number;
   chatInputOpen: boolean;
   inventoryOpen: boolean;
+  deathOverlayOpen: boolean;
   renderContext: RenderContext;
   input: InputController;
   hud: Hud;
   inventoryState: InventoryState;
   hotbar: Hotbar;
   inventoryUI: InventoryUI;
+  craftingManager: CraftingManager;
+  deathOverlayRoot: HTMLElement | null;
+  respawnButton: HTMLButtonElement | null;
+  menuButton: HTMLButtonElement | null;
   ecs: ECSWorld;
   world: VoxelWorld;
   playerEntityId: number;
@@ -55,21 +61,38 @@ export class Game {
     this.appliedRenderDistance = -1;
     this.chatInputOpen = false;
     this.inventoryOpen = false;
+    this.deathOverlayOpen = false;
 
     this.renderContext = new RenderContext(document.body);
     this.input = new InputController(this.renderContext.renderer.domElement);
     this.hud = new Hud(
       document.getElementById('help'),
       document.getElementById('breakProgress'),
-      document.getElementById('breakProgressFill')
+      document.getElementById('breakProgressFill'),
+      document.getElementById('healthBar'),
+      document.getElementById('hungerBar')
     );
     this.inventoryState = new InventoryState(45, createInitialInventorySlots());
+    this.craftingManager = new CraftingManager(new InventoryState(4), new InventoryState(9));
     this.hotbar = new Hotbar(document.getElementById('hotbar'), this.inventoryState);
     this.inventoryUI = new InventoryUI({
       overlayElement: document.getElementById('inventoryOverlay'),
       gridElement: document.getElementById('inventoryGrid'),
-      inventoryState: this.inventoryState
+      craftingGridElement: document.getElementById('craftingGrid'),
+      craftingResultElement: document.getElementById('craftingResult'),
+      inventoryState: this.inventoryState,
+      getCraftingResult: () => this.craftingManager.getResultSlot(),
+      onCraft: () => {
+        this.craftingManager.craftOnce(this.inventoryState);
+      }
     });
+    this.inventoryUI.setCraftingState(
+      this.craftingManager.getActiveGrid(),
+      this.craftingManager.getGridSize()
+    );
+    this.deathOverlayRoot = document.getElementById('deathOverlay');
+    this.respawnButton = document.getElementById('respawnButton') as HTMLButtonElement | null;
+    this.menuButton = document.getElementById('menuButton') as HTMLButtonElement | null;
     this.ecs = new ECSWorld();
     this.world = new VoxelWorld(this.renderContext.scene, this.settings, this.worldConfig);
     this.playerEntityId = createPlayerEntity(this.ecs, this.settings);
@@ -82,7 +105,9 @@ export class Game {
       settings: this.settings,
       lighting: this.renderContext.lighting,
       ecs: this.ecs,
-      playerEntityId: this.playerEntityId
+      playerEntityId: this.playerEntityId,
+      inventoryState: this.inventoryState,
+      onPlayerDeath: () => this.showDeathOverlay()
     });
     this.orchestrator = new SystemOrchestrator({
       ecs: this.ecs,
@@ -92,7 +117,8 @@ export class Game {
       input: this.input,
       hotbar: this.hotbar,
       inventoryState: this.inventoryState,
-      hud: this.hud
+      hud: this.hud,
+      onOpenCraftingTable: () => this.openInventoryWithMode('table')
     });
     this.commandService = new GameCommandService({
       ecs: this.ecs,
@@ -139,19 +165,47 @@ export class Game {
 
     this.input.addPointerLockListener((isLocked) => this.hud.setContextVisible(!isLocked));
     this.input.addHotbarSelectionListener((selectedSlot) => this.hotbar.setSelected(selectedSlot));
+
+    this.respawnButton?.addEventListener('click', () => this.respawnPlayer());
+    this.menuButton?.addEventListener('click', () => {
+      window.location.href = './menu.html';
+    });
   }
 
   syncInputCapture(): void {
-    const canCapture = !this.chatInputOpen && !this.inventoryOpen;
+    const canCapture = !this.chatInputOpen && !this.inventoryOpen && !this.deathOverlayOpen;
     this.input.setCaptureEnabled(canCapture);
   }
 
   toggleInventory(): void {
-    this.inventoryOpen = !this.inventoryOpen;
-    this.inventoryUI.setOpen(this.inventoryOpen);
     if (this.inventoryOpen) {
+      this.closeInventory();
+      return;
+    }
+    this.openInventoryWithMode('player');
+  }
+
+  openInventoryWithMode(mode: 'player' | 'table'): void {
+    if (this.inventoryOpen && this.craftingManager.mode !== mode) {
+      this.craftingManager.flushActiveGridToInventory(this.inventoryState);
+    }
+    this.craftingManager.setMode(mode);
+    this.inventoryUI.setCraftingState(
+      this.craftingManager.getActiveGrid(),
+      this.craftingManager.getGridSize()
+    );
+    if (!this.inventoryOpen) {
+      this.inventoryOpen = true;
+      this.inventoryUI.setOpen(true);
       document.exitPointerLock?.();
     }
+    this.syncInputCapture();
+  }
+
+  closeInventory(): void {
+    this.craftingManager.flushActiveGridToInventory(this.inventoryState);
+    this.inventoryOpen = false;
+    this.inventoryUI.setOpen(false);
     this.syncInputCapture();
   }
 
@@ -169,6 +223,38 @@ export class Game {
     );
     if (!transform) return;
     transform.position.set(spawn.x + 0.5, spawn.y, spawn.z + 0.5);
+    this.systems.survival.setSpawnPoint(transform.position.clone());
+    this.systems.survival.lastPosition.copy(transform.position);
+    this.hud.setHealth(this.systems.survival.getHealth());
+    this.hud.setHunger(this.systems.survival.getHunger());
+  }
+
+  showDeathOverlay(): void {
+    this.deathOverlayOpen = true;
+    this.deathOverlayRoot?.classList.remove('is-hidden');
+    document.exitPointerLock?.();
+    this.syncInputCapture();
+  }
+
+  hideDeathOverlay(): void {
+    this.deathOverlayOpen = false;
+    this.deathOverlayRoot?.classList.add('is-hidden');
+    this.syncInputCapture();
+  }
+
+  respawnPlayer(): void {
+    this.systems.survival.respawn();
+    const transform = this.ecs.getComponent<{ position: THREE.Vector3 }>(
+      this.playerEntityId,
+      COMPONENT_TRANSFORM
+    );
+    if (transform) {
+      this.systems.chunks.force(transform.position);
+      this.systems.camera.update(this.ecs, this.playerEntityId, this.renderContext.camera);
+    }
+    this.hud.setHealth(this.systems.survival.getHealth());
+    this.hud.setHunger(this.systems.survival.getHunger());
+    this.hideDeathOverlay();
   }
 
   bindDebugHooks(): void {
@@ -236,10 +322,22 @@ export class Game {
         dayNight: this.systems.dayNight.getTimeState(),
         nightVision: this.systems.dayNight.isNightVisionEnabled()
       },
+      vitals: {
+        health: this.systems.survival.getHealth(),
+        hunger: this.systems.survival.getHunger(),
+        isDead: this.systems.survival.isDead
+      },
       mobs: this.systems.mobs.getMobPositions(),
       hotbar: Array.from({ length: 9 }, (_, index) => {
         const slot = this.inventoryState.getSlot(index);
-        return slot ? { blockType: slot.blockType, quantity: slot.quantity } : null;
+        if (!slot) return null;
+        if (slot.kind === 'block') {
+          return { kind: slot.kind, blockType: slot.blockType, quantity: slot.quantity };
+        }
+        if (slot.kind === 'food') {
+          return { kind: slot.kind, foodType: slot.foodType, quantity: slot.quantity };
+        }
+        return { kind: slot.kind, itemType: slot.itemType, quantity: slot.quantity };
       }),
       targeting: target
     };

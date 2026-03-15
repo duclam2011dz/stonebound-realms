@@ -6,6 +6,8 @@ export const BLOCK_ID_WOOD = 4;
 export const BLOCK_ID_LEAF = 5;
 export const BLOCK_ID_SAND = 6;
 export const BLOCK_ID_LAMP = 7;
+export const BLOCK_ID_PLANK = 8;
+export const BLOCK_ID_CRAFTING_TABLE = 9;
 
 const BLOCK_IDS_BY_TYPE = Object.freeze({
   grass: BLOCK_ID_GRASS,
@@ -14,7 +16,9 @@ const BLOCK_IDS_BY_TYPE = Object.freeze({
   wood: BLOCK_ID_WOOD,
   leaf: BLOCK_ID_LEAF,
   sand: BLOCK_ID_SAND,
-  lamp: BLOCK_ID_LAMP
+  lamp: BLOCK_ID_LAMP,
+  plank: BLOCK_ID_PLANK,
+  crafting_table: BLOCK_ID_CRAFTING_TABLE
 });
 
 export type BlockType = keyof typeof BLOCK_IDS_BY_TYPE;
@@ -27,7 +31,9 @@ const BLOCK_TYPES_BY_ID: Array<BlockType | null> = [
   'wood',
   'leaf',
   'sand',
-  'lamp'
+  'lamp',
+  'plank',
+  'crafting_table'
 ];
 
 export const BLOCK_TYPES = Object.freeze(Object.keys(BLOCK_IDS_BY_TYPE) as BlockType[]);

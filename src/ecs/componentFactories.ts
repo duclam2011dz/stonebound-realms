@@ -28,6 +28,10 @@ export type GamemodeComponent = {
 
 export type MobComponent = {
   type: MobType;
+  health: number;
+  maxHealth: number;
+  hitFlashTimer: number;
+  knockback: THREE.Vector3;
 };
 
 export type MobAIComponent = {
@@ -37,6 +41,8 @@ export type MobAIComponent = {
   stuckTimer: number;
   lastPosition: THREE.Vector3;
   walkPhase: number;
+  panicTimer: number;
+  panicPhase: number;
 };
 
 export type MobRenderComponent = {
@@ -83,8 +89,14 @@ export function createGamemode(initialMode = 'survival'): GamemodeComponent {
   };
 }
 
-export function createMob(type: MobType): MobComponent {
-  return { type };
+export function createMob(type: MobType, maxHealth = 8): MobComponent {
+  return {
+    type,
+    health: maxHealth,
+    maxHealth,
+    hitFlashTimer: 0,
+    knockback: new THREE.Vector3()
+  };
 }
 
 export function createMobAI(): MobAIComponent {
@@ -94,7 +106,9 @@ export function createMobAI(): MobAIComponent {
     wanderTimer: 0,
     stuckTimer: 0,
     lastPosition: new THREE.Vector3(),
-    walkPhase: 0
+    walkPhase: 0,
+    panicTimer: 0,
+    panicPhase: 0
   };
 }
 

@@ -7,6 +7,8 @@ import { drawSandTile } from './tiles/drawSandTile';
 import { drawStoneTile } from './tiles/drawStoneTile';
 import { drawWoodTile } from './tiles/drawWoodTile';
 import { drawLampTile } from './tiles/drawLampTile';
+import { drawPlankTile } from './tiles/drawPlankTile';
+import { drawCraftingTableTile } from './tiles/drawCraftingTableTile';
 
 export function drawBlockTiles(ctx: CanvasRenderingContext2D, tileSize: number): void {
   drawGrassTopTile(ctx, BLOCK_FACE_TILES.grass.top.x, BLOCK_FACE_TILES.grass.top.y, tileSize);
@@ -18,4 +20,11 @@ export function drawBlockTiles(ctx: CanvasRenderingContext2D, tileSize: number):
   drawLeafTile(ctx, BLOCK_FACE_TILES.leaf.all.x, BLOCK_FACE_TILES.leaf.all.y, tileSize);
   drawSandTile(ctx, BLOCK_FACE_TILES.sand.all.x, BLOCK_FACE_TILES.sand.all.y, tileSize);
   drawLampTile(ctx, BLOCK_FACE_TILES.lamp.all.x, BLOCK_FACE_TILES.lamp.all.y, tileSize);
+  drawPlankTile(ctx, BLOCK_FACE_TILES.plank.all.x, BLOCK_FACE_TILES.plank.all.y, tileSize);
+  drawCraftingTableTile(
+    ctx,
+    BLOCK_FACE_TILES.crafting_table.all.x,
+    BLOCK_FACE_TILES.crafting_table.all.y,
+    tileSize
+  );
 }
