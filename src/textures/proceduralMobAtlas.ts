@@ -1,7 +1,7 @@
 import { createProceduralAtlas, type AtlasResult } from './atlas/createProceduralAtlas';
 import { drawMobTiles } from './mob/drawMobTiles';
 
-const MOB_ATLAS_COLUMNS = 4;
+const MOB_ATLAS_COLUMNS = 6;
 const MOB_ATLAS_ROWS = 4;
 const MOB_TILE_SIZE = 16;
 let cachedMobAtlas: AtlasResult | null = null;

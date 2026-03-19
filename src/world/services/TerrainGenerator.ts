@@ -36,8 +36,8 @@ export class TerrainGenerator {
   }
 
   getHeight(x: number, z: number): number {
-    const biomeId = this.biomeModel.getBiomeId(x, z);
-    return this.heightModel.getHeight(x, z, biomeId);
+    const weights = this.biomeModel.getBiomeWeights(x, z);
+    return this.heightModel.getBlendedHeight(x, z, weights);
   }
 
   getBiomeAt(x: number, z: number): string {
@@ -64,7 +64,7 @@ export class TerrainGenerator {
     const baseX = cx * this.chunkSize;
     const baseZ = cz * this.chunkSize;
     const biomeMap = this.biomeModel.buildBiomeMap(baseX, baseZ, this.chunkSize);
-    const heightMap = this.heightModel.buildHeightMap(baseX, baseZ, this.chunkSize, biomeMap);
+    const heightMap = this.heightModel.buildHeightMap(baseX, baseZ, this.chunkSize);
     storage.ensureChunkData(cx, cz);
 
     for (let lz = 0; lz < this.chunkSize; lz++) {

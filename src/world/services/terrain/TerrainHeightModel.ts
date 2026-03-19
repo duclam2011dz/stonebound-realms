@@ -1,5 +1,5 @@
 import type { SeededNoise } from '../../noise/SeededNoise';
-import type { BiomeModel } from './BiomeModel';
+import type { BiomeModel, BiomeWeights } from './BiomeModel';
 import { BIOME_DESERT, BIOME_FOREST, BIOME_HILL, BIOME_PLAIN } from './biomeTypes';
 
 function clamp(value: number, min: number, max: number): number {
@@ -17,7 +17,11 @@ export class TerrainHeightModel {
     this.biomeModel = biomeModel;
   }
 
-  getHeight(x: number, z: number, biomeId: number = this.biomeModel.getBiomeId(x, z)): number {
+  getBaseHeightForBiome(
+    x: number,
+    z: number,
+    biomeId: number = this.biomeModel.getBiomeId(x, z)
+  ): number {
     const continental = this.noise.fractalPerlin2D(x * 0.00195, z * 0.00195, 4, 0.52, 2.03);
     const erosion = this.noise.fractalPerlin2D(x * 0.009 + 700, z * 0.009 + 700, 2, 0.5, 2);
     const detail = this.noise.fractalSimplex2D(x * 0.0085, z * 0.0085, 3, 0.56, 2.1);
@@ -70,24 +74,37 @@ export class TerrainHeightModel {
         28 + continental * 7 + longWaves * 4.5 + duneRidges + detail * 1.8 + erosion * 1.4;
     }
 
+    return baseHeight;
+  }
+
+  getHeight(x: number, z: number, biomeId: number = this.biomeModel.getBiomeId(x, z)): number {
+    const baseHeight = this.getBaseHeightForBiome(x, z, biomeId);
     return clamp(Math.floor(baseHeight), 8, this.maxHeight - 6);
   }
 
-  buildHeightMap(
-    baseX: number,
-    baseZ: number,
-    chunkSize: number,
-    biomeMap: Uint8Array | null = null
-  ): Int16Array {
+  getBlendedHeight(x: number, z: number, weights: BiomeWeights): number {
+    const basePlain = this.getBaseHeightForBiome(x, z, BIOME_PLAIN);
+    const baseForest = this.getBaseHeightForBiome(x, z, BIOME_FOREST);
+    const baseHill = this.getBaseHeightForBiome(x, z, BIOME_HILL);
+    const baseDesert = this.getBaseHeightForBiome(x, z, BIOME_DESERT);
+
+    const blended =
+      basePlain * weights.plain +
+      baseForest * weights.forest +
+      baseHill * weights.hill +
+      baseDesert * weights.desert;
+
+    return clamp(Math.floor(blended), 8, this.maxHeight - 6);
+  }
+
+  buildHeightMap(baseX: number, baseZ: number, chunkSize: number): Int16Array {
     const heightMap = new Int16Array(chunkSize * chunkSize);
     for (let lz = 0; lz < chunkSize; lz++) {
       for (let lx = 0; lx < chunkSize; lx++) {
         const worldX = baseX + lx;
         const worldZ = baseZ + lz;
-        const biomeId = biomeMap
-          ? (biomeMap[lx + lz * chunkSize] ?? this.biomeModel.getBiomeId(worldX, worldZ))
-          : this.biomeModel.getBiomeId(worldX, worldZ);
-        heightMap[lx + lz * chunkSize] = this.getHeight(worldX, worldZ, biomeId);
+        const weights = this.biomeModel.getBiomeWeights(worldX, worldZ);
+        heightMap[lx + lz * chunkSize] = this.getBlendedHeight(worldX, worldZ, weights);
       }
     }
     return heightMap;

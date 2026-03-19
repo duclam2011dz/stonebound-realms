@@ -98,8 +98,16 @@ export class Hotbar {
 
     if (isItemSlot(slot)) {
       const item = getItemDefinition(slot.itemType);
-      swatchElement.style.backgroundImage = '';
-      swatchElement.style.backgroundColor = item.swatch;
+      if (item.icon) {
+        swatchElement.style.backgroundImage = `url("${item.icon}")`;
+        swatchElement.style.backgroundSize = 'contain';
+        swatchElement.style.backgroundRepeat = 'no-repeat';
+        swatchElement.style.backgroundPosition = 'center';
+        swatchElement.style.backgroundColor = item.swatch;
+      } else {
+        swatchElement.style.backgroundImage = '';
+        swatchElement.style.backgroundColor = item.swatch;
+      }
       return;
     }
 

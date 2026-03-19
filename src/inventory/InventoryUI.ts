@@ -1,10 +1,10 @@
 import { BLOCK_ATLAS, BLOCK_FACE_TILES } from '../config/constants';
 import { getProceduralAtlasAssets } from '../textures/proceduralBlockAtlas';
-import type { InventoryState } from './InventoryState';
+import { MAX_STACK_SIZE, type InventoryState } from './InventoryState';
 import { getFoodDefinition } from './foodDefinitions';
-import { getItemDefinition } from './itemDefinitions';
-import type { InventorySlot } from './itemTypes';
-import { isBlockSlot, isFoodSlot, isItemSlot } from './itemTypes';
+import { getItemDefinition, getItemMaxStack } from './itemDefinitions';
+import type { InventoryItem, InventorySlot } from './itemTypes';
+import { getItemKey, isBlockSlot, isFoodSlot, isItemSlot } from './itemTypes';
 import { getItemTooltip } from './itemTooltip';
 import type { BlockType } from '../world/services/BlockPalette';
 
@@ -55,8 +55,16 @@ function applyAtlasSwatch(
 
   if (isItemSlot(slot)) {
     const item = getItemDefinition(slot.itemType);
-    element.style.backgroundImage = '';
-    element.style.backgroundColor = item.swatch;
+    if (item.icon) {
+      element.style.backgroundImage = `url("${item.icon}")`;
+      element.style.backgroundSize = 'contain';
+      element.style.backgroundRepeat = 'no-repeat';
+      element.style.backgroundPosition = 'center';
+      element.style.backgroundColor = item.swatch;
+    } else {
+      element.style.backgroundImage = '';
+      element.style.backgroundColor = item.swatch;
+    }
     return;
   }
 
@@ -87,6 +95,13 @@ type InventoryUIOptions = {
 
 type SlotGroup = 'inventory' | 'crafting';
 
+type DragOrigin = { group: SlotGroup; index: number };
+
+type CursorDragState = {
+  origin: DragOrigin | null;
+  item: InventorySlot;
+};
+
 export class InventoryUI {
   overlayElement: HTMLElement | null;
   gridElement: HTMLElement | null;
@@ -105,6 +120,10 @@ export class InventoryUI {
   proceduralAtlasImageUrl: string;
   boundCraftingStates: Set<InventoryState>;
   craftingResultBound: boolean;
+  cursorDrag: CursorDragState | null;
+  dragGhost: HTMLElement | null;
+  dragGhostSwatch: HTMLElement | null;
+  dragGhostCount: HTMLElement | null;
 
   constructor({
     overlayElement,
@@ -132,11 +151,21 @@ export class InventoryUI {
     this.proceduralAtlasImageUrl = getProceduralAtlasAssets().imageUrl;
     this.boundCraftingStates = new Set();
     this.craftingResultBound = false;
+    this.cursorDrag = null;
+    this.dragGhost = null;
+    this.dragGhostSwatch = null;
+    this.dragGhostCount = null;
 
     this.renderGrid();
     this.renderCraftingGrid();
     this.inventoryState.addListener(() => this.refreshSlots());
     this.refreshSlots();
+
+    this.createDragGhost();
+    this.overlayElement?.addEventListener('contextmenu', (event) => event.preventDefault());
+    window.addEventListener('mousemove', (event) => {
+      this.updateDragGhostPosition(event.clientX, event.clientY);
+    });
   }
 
   renderGrid(): void {
@@ -209,63 +238,219 @@ export class InventoryUI {
     slot.appendChild(swatch);
     slot.appendChild(count);
 
-    slot.addEventListener('dragover', (event: DragEvent) => {
+    slot.addEventListener('contextmenu', (event: MouseEvent) => {
       event.preventDefault();
     });
 
-    slot.addEventListener('drop', (event: DragEvent) => {
-      event.preventDefault();
-      const payload = event.dataTransfer?.getData('text/plain') ?? '';
-      const parsed = this.parseDragPayload(payload);
+    slot.addEventListener('mousedown', (event: MouseEvent) => {
       const targetIndex = Number(slot.dataset.slotIndex);
       const targetGroup = slot.dataset.slotGroup as SlotGroup;
-      if (!parsed || Number.isNaN(targetIndex) || !targetGroup) return;
+      if (Number.isNaN(targetIndex) || !targetGroup) return;
 
-      const sourceState = this.getStateForGroup(parsed.group);
-      const targetState = this.getStateForGroup(targetGroup);
-      if (!sourceState || !targetState) return;
-
-      if (parsed.group === targetGroup) {
-        sourceState.swapSlots(parsed.index, targetIndex);
-        return;
-      }
-
-      const sourceSlot = sourceState.getSlot(parsed.index);
-      const targetSlot = targetState.getSlot(targetIndex);
-      sourceState.setSlot(parsed.index, targetSlot);
-      targetState.setSlot(targetIndex, sourceSlot);
-    });
-
-    slot.addEventListener('dragstart', (event: DragEvent) => {
-      const fromIndex = Number(slot.dataset.slotIndex);
-      const slotGroup = slot.dataset.slotGroup as SlotGroup;
-      const state = this.getStateForGroup(slotGroup);
-      const slotItem = state?.getSlot(fromIndex) ?? null;
-      if (!slotItem) {
+      if (event.button === 2) {
         event.preventDefault();
+        this.handleRightClick(targetGroup, targetIndex, event.clientX, event.clientY);
         return;
       }
-      event.dataTransfer?.setData('text/plain', this.buildDragPayload(slotGroup, fromIndex));
+
+      if (event.button === 0) {
+        event.preventDefault();
+        this.handleLeftClick(targetGroup, targetIndex, event.clientX, event.clientY);
+      }
     });
 
     return slot;
   }
 
-  buildDragPayload(group: SlotGroup, index: number): string {
-    return `${group}:${index}`;
-  }
-
-  parseDragPayload(payload: string): { group: SlotGroup; index: number } | null {
-    const [groupRaw, indexRaw] = payload.split(':');
-    if (groupRaw !== 'inventory' && groupRaw !== 'crafting') return null;
-    const index = Number(indexRaw);
-    if (Number.isNaN(index)) return null;
-    return { group: groupRaw, index };
-  }
-
   getStateForGroup(group: SlotGroup): InventoryState | null {
     if (group === 'inventory') return this.inventoryState;
     return this.craftingState;
+  }
+
+  getStackLimit(slot: InventorySlot): number {
+    if (slot.kind === 'item') return getItemMaxStack(slot.itemType);
+    return MAX_STACK_SIZE;
+  }
+
+  stripSlot(slot: InventorySlot): InventoryItem {
+    if (slot.kind === 'block') return { kind: 'block', blockType: slot.blockType };
+    if (slot.kind === 'food') return { kind: 'food', foodType: slot.foodType };
+    return { kind: 'item', itemType: slot.itemType };
+  }
+
+  createDragGhost(): void {
+    if (!this.overlayElement || this.dragGhost) return;
+    const ghost = document.createElement('div');
+    ghost.className = 'inventory-drag is-hidden';
+    const swatch = document.createElement('span');
+    swatch.className = 'inventory-swatch';
+    const count = document.createElement('span');
+    count.className = 'inventory-count';
+    ghost.appendChild(swatch);
+    ghost.appendChild(count);
+    this.overlayElement.appendChild(ghost);
+    this.dragGhost = ghost;
+    this.dragGhostSwatch = swatch;
+    this.dragGhostCount = count;
+  }
+
+  showDragGhost(item: InventorySlot, x: number, y: number): void {
+    if (!this.dragGhost || !this.dragGhostSwatch || !this.dragGhostCount) return;
+    applyAtlasSwatch(this.dragGhostSwatch, item, this.proceduralAtlasImageUrl);
+    this.dragGhostCount.textContent = item.quantity > 1 ? String(item.quantity) : '';
+    this.dragGhost.classList.remove('is-hidden');
+    this.updateDragGhostPosition(x, y);
+  }
+
+  updateDragGhostPosition(x: number, y: number): void {
+    if (!this.cursorDrag || !this.dragGhost) return;
+    this.dragGhost.style.left = `${x}px`;
+    this.dragGhost.style.top = `${y}px`;
+  }
+
+  hideDragGhost(): void {
+    this.dragGhost?.classList.add('is-hidden');
+  }
+
+  updateCursorGhost(): void {
+    if (!this.cursorDrag || !this.dragGhostSwatch || !this.dragGhostCount) return;
+    applyAtlasSwatch(this.dragGhostSwatch, this.cursorDrag.item, this.proceduralAtlasImageUrl);
+    this.dragGhostCount.textContent =
+      this.cursorDrag.item.quantity > 1 ? String(this.cursorDrag.item.quantity) : '';
+  }
+
+  beginCursorDrag(item: InventorySlot, origin: DragOrigin | null, x: number, y: number): void {
+    this.cursorDrag = { item: { ...item }, origin };
+    this.showDragGhost(this.cursorDrag.item, x, y);
+  }
+
+  clearCursorDrag(): void {
+    this.cursorDrag = null;
+    this.hideDragGhost();
+  }
+
+  markCursorPlaced(): void {
+    if (this.cursorDrag) {
+      this.cursorDrag.origin = null;
+    }
+  }
+
+  handleLeftClick(group: SlotGroup, index: number, x: number, y: number): void {
+    const state = this.getStateForGroup(group);
+    if (!state) return;
+    const targetSlot = state.getSlot(index);
+
+    if (!this.cursorDrag) {
+      if (!targetSlot) return;
+      state.setSlot(index, null);
+      this.beginCursorDrag(targetSlot, { group, index }, x, y);
+      return;
+    }
+
+    const cursorItem = this.cursorDrag.item;
+    if (!targetSlot) {
+      state.setSlot(index, cursorItem);
+      this.clearCursorDrag();
+      return;
+    }
+
+    if (getItemKey(targetSlot) === getItemKey(cursorItem)) {
+      const maxStack = this.getStackLimit(targetSlot);
+      if (targetSlot.quantity >= maxStack) return;
+      const transfer = Math.min(maxStack - targetSlot.quantity, cursorItem.quantity);
+      state.setSlot(index, { ...targetSlot, quantity: targetSlot.quantity + transfer });
+      cursorItem.quantity -= transfer;
+      this.markCursorPlaced();
+      if (cursorItem.quantity <= 0) {
+        this.clearCursorDrag();
+      } else {
+        this.updateCursorGhost();
+      }
+      return;
+    }
+
+    state.setSlot(index, cursorItem);
+    this.cursorDrag = { item: { ...targetSlot }, origin: null };
+    this.showDragGhost(this.cursorDrag.item, x, y);
+  }
+
+  handleRightClick(group: SlotGroup, index: number, x: number, y: number): void {
+    const state = this.getStateForGroup(group);
+    if (!state) return;
+    const targetSlot = state.getSlot(index);
+
+    if (this.cursorDrag) {
+      const cursorItem = this.cursorDrag.item;
+      if (!targetSlot) {
+        state.setSlot(index, { ...cursorItem, quantity: 1 });
+        cursorItem.quantity -= 1;
+        this.markCursorPlaced();
+        if (cursorItem.quantity <= 0) {
+          this.clearCursorDrag();
+        } else {
+          this.updateCursorGhost();
+        }
+        return;
+      }
+
+      if (getItemKey(targetSlot) !== getItemKey(cursorItem)) return;
+      const maxStack = this.getStackLimit(targetSlot);
+      if (targetSlot.quantity >= maxStack) return;
+      state.setSlot(index, { ...targetSlot, quantity: targetSlot.quantity + 1 });
+      cursorItem.quantity -= 1;
+      this.markCursorPlaced();
+      if (cursorItem.quantity <= 0) {
+        this.clearCursorDrag();
+      } else {
+        this.updateCursorGhost();
+      }
+      return;
+    }
+
+    if (!targetSlot) return;
+    const splitAmount = Math.ceil(targetSlot.quantity / 2);
+    const remaining = targetSlot.quantity - splitAmount;
+    if (splitAmount <= 0) return;
+    if (remaining > 0) {
+      state.setSlot(index, { ...targetSlot, quantity: remaining });
+    } else {
+      state.setSlot(index, null);
+    }
+    this.beginCursorDrag({ ...targetSlot, quantity: splitAmount }, { group, index }, x, y);
+  }
+
+  cancelCursorDrag(): void {
+    if (!this.cursorDrag) return;
+    const drag = this.cursorDrag;
+    let remaining = drag.item.quantity;
+
+    if (drag.origin) {
+      const originState = this.getStateForGroup(drag.origin.group);
+      if (originState) {
+        const originSlot = originState.getSlot(drag.origin.index);
+        if (!originSlot) {
+          originState.setSlot(drag.origin.index, { ...drag.item, quantity: remaining });
+          this.clearCursorDrag();
+          return;
+        }
+        if (getItemKey(originSlot) === getItemKey(drag.item)) {
+          const maxStack = this.getStackLimit(originSlot);
+          const transfer = Math.min(maxStack - originSlot.quantity, remaining);
+          if (transfer > 0) {
+            originState.setSlot(drag.origin.index, {
+              ...originSlot,
+              quantity: originSlot.quantity + transfer
+            });
+            remaining -= transfer;
+          }
+        }
+      }
+    }
+
+    if (remaining > 0) {
+      this.inventoryState.addItem(this.stripSlot(drag.item), remaining);
+    }
+    this.clearCursorDrag();
   }
 
   refreshSlots(): void {
@@ -280,7 +465,7 @@ export class InventoryUI {
         count.textContent = quantity > 1 ? String(quantity) : '';
       }
       slotElement.classList.toggle('is-empty', !slotItem);
-      slotElement.setAttribute('draggable', slotItem ? 'true' : 'false');
+      slotElement.setAttribute('draggable', 'false');
       slotElement.title = slotItem ? getItemTooltip(slotItem) : '';
     });
   }
@@ -301,7 +486,7 @@ export class InventoryUI {
         count.textContent = quantity > 1 ? String(quantity) : '';
       }
       slotElement.classList.toggle('is-empty', !slotItem);
-      slotElement.setAttribute('draggable', slotItem ? 'true' : 'false');
+      slotElement.setAttribute('draggable', 'false');
       slotElement.title = slotItem ? getItemTooltip(slotItem) : '';
     });
 
@@ -349,6 +534,9 @@ export class InventoryUI {
 
   setOpen(nextOpen: boolean): void {
     this.isOpen = nextOpen;
+    if (!nextOpen) {
+      this.cancelCursorDrag();
+    }
     this.overlayElement?.classList.toggle('is-hidden', !nextOpen);
   }
 }

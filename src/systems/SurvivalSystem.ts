@@ -13,6 +13,8 @@ const STARVATION_TICK_SECONDS = 1.6;
 const HUNGER_DRAIN_FULL_SECONDS = 60;
 const HUNGER_DRAIN_LOW_SECONDS = 30;
 const HUNGER_MOVE_THRESHOLD = 1e-3;
+const REGEN_TICK_SECONDS = 0.6;
+const REGEN_HEALTH_PER_HUNGER = 5;
 
 export class SurvivalSystem {
   ecs: ECSWorld;
@@ -25,6 +27,8 @@ export class SurvivalSystem {
   lastPosition: THREE.Vector3;
   starvationTimer: number;
   hungerTimer: number;
+  regenTimer: number;
+  regenHealed: number;
   spawnPoint: THREE.Vector3 | null;
   onDeath: (() => void) | null;
 
@@ -39,6 +43,8 @@ export class SurvivalSystem {
     this.lastPosition = new THREE.Vector3();
     this.starvationTimer = 0;
     this.hungerTimer = 0;
+    this.regenTimer = 0;
+    this.regenHealed = 0;
     this.spawnPoint = null;
     this.onDeath = onDeath;
   }
@@ -75,6 +81,7 @@ export class SurvivalSystem {
     this.applyHungerDrain(transform.position, dt);
     this.applyFallDamage(transform, physics);
     this.applyStarvationDamage(dt);
+    this.applyAutoHeal(dt);
 
     this.lastPosition.copy(transform.position);
     this.lastOnGround = physics.onGround;
@@ -120,6 +127,28 @@ export class SurvivalSystem {
     }
   }
 
+  applyAutoHeal(dt: number): void {
+    if (this.health >= MAX_HEALTH || this.hunger < MAX_HUNGER) {
+      this.regenTimer = 0;
+      this.regenHealed = 0;
+      return;
+    }
+    this.regenTimer += dt;
+    while (this.regenTimer >= REGEN_TICK_SECONDS && this.health < MAX_HEALTH) {
+      this.regenTimer -= REGEN_TICK_SECONDS;
+      this.health = Math.min(MAX_HEALTH, this.health + 1);
+      this.regenHealed += 1;
+      if (this.regenHealed >= REGEN_HEALTH_PER_HUNGER) {
+        this.regenHealed = 0;
+        this.hunger = Math.max(0, this.hunger - 1);
+        if (this.hunger < MAX_HUNGER) {
+          this.regenTimer = 0;
+          break;
+        }
+      }
+    }
+  }
+
   applyDamage(amount: number): void {
     if (this.isDead) return;
     const applied = Math.max(0, Number(amount) || 0);
@@ -162,6 +191,8 @@ export class SurvivalSystem {
     this.lastOnGround = false;
     this.starvationTimer = 0;
     this.hungerTimer = 0;
+    this.regenTimer = 0;
+    this.regenHealed = 0;
     if (transform) this.lastPosition.copy(transform.position);
   }
 }

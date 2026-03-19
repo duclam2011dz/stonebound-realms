@@ -11,11 +11,55 @@ export type MobDefinition = {
   maxHealth: number;
   groupSize: { min: number; max: number };
   drops: { food: FoodType; amount: number };
-  atlasTile: { x: number; y: number };
+  atlas: MobAtlas;
   body: { width: number; height: number; length: number };
   head: { width: number; height: number; length: number };
   leg: { size: number; height: number };
 };
+
+export type MobAtlasTile = { x: number; y: number };
+
+export type MobAtlasFaces = {
+  right: MobAtlasTile;
+  left: MobAtlasTile;
+  top: MobAtlasTile;
+  bottom: MobAtlasTile;
+  front: MobAtlasTile;
+  back: MobAtlasTile;
+};
+
+export type MobAtlas = {
+  head: MobAtlasFaces;
+  body: MobAtlasFaces;
+  leg: MobAtlasFaces;
+};
+
+const createMobAtlasRow = (row: number): MobAtlas => ({
+  head: {
+    front: { x: 0, y: row },
+    back: { x: 1, y: row },
+    left: { x: 1, y: row },
+    right: { x: 1, y: row },
+    top: { x: 1, y: row },
+    bottom: { x: 1, y: row }
+  },
+  body: {
+    front: { x: 2, y: row },
+    back: { x: 2, y: row },
+    left: { x: 2, y: row },
+    right: { x: 2, y: row },
+    top: { x: 3, y: row },
+    bottom: { x: 3, y: row }
+  },
+  leg: {
+    front: { x: 4, y: row },
+    back: { x: 4, y: row },
+    left: { x: 4, y: row },
+    right: { x: 4, y: row },
+    top: { x: 5, y: row },
+    bottom: { x: 5, y: row }
+  }
+});
 
 const MOB_DEFINITIONS: Record<MobType, MobDefinition> = {
   pig: {
@@ -27,7 +71,7 @@ const MOB_DEFINITIONS: Record<MobType, MobDefinition> = {
     maxHealth: 6,
     groupSize: { min: 1, max: 4 },
     drops: { food: 'pork', amount: 1 },
-    atlasTile: { x: 0, y: 0 },
+    atlas: createMobAtlasRow(0),
     body: { width: 0.9, height: 0.6, length: 1.2 },
     head: { width: 0.55, height: 0.55, length: 0.55 },
     leg: { size: 0.22, height: 0.5 }
@@ -41,7 +85,7 @@ const MOB_DEFINITIONS: Record<MobType, MobDefinition> = {
     maxHealth: 10,
     groupSize: { min: 1, max: 4 },
     drops: { food: 'beef', amount: 1 },
-    atlasTile: { x: 1, y: 0 },
+    atlas: createMobAtlasRow(1),
     body: { width: 1.0, height: 0.7, length: 1.4 },
     head: { width: 0.6, height: 0.6, length: 0.6 },
     leg: { size: 0.24, height: 0.55 }
@@ -55,7 +99,7 @@ const MOB_DEFINITIONS: Record<MobType, MobDefinition> = {
     maxHealth: 8,
     groupSize: { min: 2, max: 4 },
     drops: { food: 'mutton', amount: 1 },
-    atlasTile: { x: 2, y: 0 },
+    atlas: createMobAtlasRow(2),
     body: { width: 0.95, height: 0.7, length: 1.2 },
     head: { width: 0.55, height: 0.55, length: 0.55 },
     leg: { size: 0.22, height: 0.52 }
@@ -69,7 +113,7 @@ const MOB_DEFINITIONS: Record<MobType, MobDefinition> = {
     maxHealth: 4,
     groupSize: { min: 4, max: 4 },
     drops: { food: 'chicken', amount: 1 },
-    atlasTile: { x: 3, y: 0 },
+    atlas: createMobAtlasRow(3),
     body: { width: 0.6, height: 0.45, length: 0.7 },
     head: { width: 0.4, height: 0.4, length: 0.4 },
     leg: { size: 0.16, height: 0.38 }

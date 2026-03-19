@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { MobDefinition } from './mobDefinitions';
+import type { MobAtlasFaces, MobDefinition } from './mobDefinitions';
 
 export type MobRenderParts = {
   root: THREE.Group;
@@ -11,35 +11,44 @@ export type MobRenderParts = {
 
 function applyBoxUVs(
   geometry: THREE.BoxGeometry,
-  tileX: number,
-  tileY: number,
+  faces: MobAtlasFaces,
   columns: number,
   rows: number
 ): void {
   const uvs = geometry.attributes.uv;
-  const u0 = tileX / columns;
-  const u1 = (tileX + 1) / columns;
-  const v0 = 1 - (tileY + 1) / rows;
-  const v1 = 1 - tileY / rows;
-
   if (!uvs) return;
-  for (let i = 0; i < uvs.count; i += 4) {
-    uvs.setXY(i + 0, u0, v1);
-    uvs.setXY(i + 1, u1, v1);
-    uvs.setXY(i + 2, u0, v0);
-    uvs.setXY(i + 3, u1, v0);
+  const faceOrder: Array<keyof MobAtlasFaces> = [
+    'right',
+    'left',
+    'top',
+    'bottom',
+    'front',
+    'back'
+  ];
+  for (let faceIndex = 0; faceIndex < faceOrder.length; faceIndex++) {
+    const faceKey = faceOrder[faceIndex];
+    const tile = faces[faceKey];
+    const u0 = tile.x / columns;
+    const u1 = (tile.x + 1) / columns;
+    const v0 = 1 - (tile.y + 1) / rows;
+    const v1 = 1 - tile.y / rows;
+    const offset = faceIndex * 4;
+    uvs.setXY(offset + 0, u0, v1);
+    uvs.setXY(offset + 1, u1, v1);
+    uvs.setXY(offset + 2, u0, v0);
+    uvs.setXY(offset + 3, u1, v0);
   }
   uvs.needsUpdate = true;
 }
 
 function createPart(
   size: { width: number; height: number; length: number },
-  definition: MobDefinition,
+  faces: MobAtlasFaces,
   material: THREE.MeshLambertMaterial,
   atlas: { columns: number; rows: number }
 ): THREE.Mesh {
   const geometry = new THREE.BoxGeometry(size.width, size.height, size.length);
-  applyBoxUVs(geometry, definition.atlasTile.x, definition.atlasTile.y, atlas.columns, atlas.rows);
+  applyBoxUVs(geometry, faces, atlas.columns, atlas.rows);
   return new THREE.Mesh(geometry, material);
 }
 
@@ -53,18 +62,12 @@ export function createMobModel(
   const mobMaterial = material.clone();
   mobMaterial.color.set(0xffffff);
 
-  const body = createPart(definition.body, definition, mobMaterial, atlas);
-  const head = createPart(definition.head, definition, mobMaterial, atlas);
+  const body = createPart(definition.body, definition.atlas.body, mobMaterial, atlas);
+  const head = createPart(definition.head, definition.atlas.head, mobMaterial, atlas);
   const legSize = definition.leg.size;
   const legHeight = definition.leg.height;
   const legGeometry = new THREE.BoxGeometry(legSize, legHeight, legSize);
-  applyBoxUVs(
-    legGeometry,
-    definition.atlasTile.x,
-    definition.atlasTile.y,
-    atlas.columns,
-    atlas.rows
-  );
+  applyBoxUVs(legGeometry, definition.atlas.leg, atlas.columns, atlas.rows);
   const legs = [
     new THREE.Mesh(legGeometry, mobMaterial),
     new THREE.Mesh(legGeometry, mobMaterial),

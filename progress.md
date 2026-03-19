@@ -348,3 +348,49 @@ Tests:
 - npm run typecheck (pass)
 - npm run lint (pass)
 - Playwright skill client run via Vite dev server; screenshots in output/web-game (shot-0..2).
+
+Update 2026-03-18 (HUD icons + inventory split/stack + regen + movement tuning):
+
+- HUD:
+  - Thay icon thanh mÃ¡u/thá»©c Äƒn tá»« Ã´ vuÃ´ng sang trá¡i tim + thá»‹t (CSS mask SVG).
+- Item icons:
+  - Táº¡o icon SVG cho `wooden_sword` vÃ  `wooden_pickaxe`, hotbar/inventory hiá»ƒn thá»‹ Ä‘Ãºng hÃ¬nh kiáº¿m/gáº£y.
+- Inventory UX:
+  - RMB chia stack lÃ m 2 nửa: nửa ở Ã´ cÅ©, nửa drag theo chuột.
+  - Nếu đóng inventory khi đang drag nửa stack, tá»± Ä‘á»™ng trÆ°n vá» Ã´ gốc vÃ  cá»™ng láº¡i.
+  - KÃ©o tháº£ vÃ o Ã´ cÃ¹ng loáº¡i chÆ°a Ä‘áº§y stack sÃ© cá»™ng dồn; nếu Ä‘Ã£ Ä‘áº§y thÃ¬ stack dÆ° tá»± quay vá» Ã´ gốc.
+- Survival:
+  - Tá»± Ä‘á»™ng há»“i mÃ¡u khi thanh Ä‘Ã³i Ä‘áº§y; há»“i dần theo nhịp vÃ  sau ~2-3 tim sÃ© tụt 1 nấc Ä‘Ã³i.
+- Movement:
+  - A/D ngang bÃ¡ng tá»‘c Ä‘á»™ S, báº±ng 1/2 W (tiáº¿n).
+
+Validation/tests:
+
+- WEB_GAME_CLIENT via http.server:
+  - `output/web-game/errors-0.json`: MIME module warning do TS served as text/plain (expected with python http.server).
+  - shot-0 chÆ°a load game JS.
+- WEB_GAME_CLIENT via Vite dev server:
+  - `output/web-game-vite/shot-0..2.png`, `state-0..2.json`.
+  - KhÃ´ng cÃ³ errors-*.json.
+  - Kiá»ƒm tra visually: icon trái tim + thá»‹t hiá»ƒn thá»‹ trÃªn HUD.
+
+Update 2026-03-18 (inventory click-to-carry + biome blend + mob textures):
+
+- Inventory:
+  - Äá»•i tÆ°Æ¡ng tÃ¡c sang click-to-carry (khÃ´ng dÃ¹ng drag/drop HTML5 nÆ°a).
+  - LMB: nháº·t stack, Ä‘áº·t stack, merge cÃ¹ng loáº¡i, swap khÃ¡c loáº¡i.
+  - RMB: táº¡ch nửa khi khÃ´ng cÃ³ item trÃªn con trá»; khi Ä‘ang cÃ³ item thÃ¬ Ä‘áº·t 1 vÃ o Ã´ trống/Ã´ cÃ¹ng loáº¡i.
+  - Khi Ä‘Ã³ng inventory, item Ä‘ang cÆ°Æ¡ng sÄ© đÆ°á»£c trả vÃ o Ã´ gốc nӃu cÃ³ thá»ƒ, dÆ° thá»«a thÃ¬ auto vÃ o inventory.
+- Hotbar:
+  - Fix icon item gỗ (kiếm/cuốc) khÃ´ng hiện (URL data SVG + nền swatch).
+- Biome blending:
+  - ThÃªm weight blending (Gaussian) cho biome, heightMap dùng blended height giÃºp chuyá»ƒn biome mÆ°á»£t, bớt “cắt xé”.
+- Mob textures:
+  - TÄng atlas mob lên 6 cột/4 hàng, tÃ¡ch mặt head/body/leg/hoof.
+  - UV theo từng mặt của BoxGeometry, head có mặt trước, body top, leg hoof riêng.
+
+Validation/tests:
+
+- WEB_GAME_CLIENT via Vite dev server:
+  - `output/web-game-vite-2/shot-0..2.png`, `state-0..2.json`.
+  - KhÃ´ng cÃ³ errors-*.json, HUD hiá»ƒn thá»‹ bÃ¬nh thÆ°á»ng.
