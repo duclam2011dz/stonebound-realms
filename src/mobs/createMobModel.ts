@@ -17,16 +17,10 @@ function applyBoxUVs(
 ): void {
   const uvs = geometry.attributes.uv;
   if (!uvs) return;
-  const faceOrder: Array<keyof MobAtlasFaces> = [
-    'right',
-    'left',
-    'top',
-    'bottom',
-    'front',
-    'back'
-  ];
+  const faceOrder: Array<keyof MobAtlasFaces> = ['right', 'left', 'top', 'bottom', 'front', 'back'];
   for (let faceIndex = 0; faceIndex < faceOrder.length; faceIndex++) {
     const faceKey = faceOrder[faceIndex];
+    if (!faceKey) continue;
     const tile = faces[faceKey];
     const u0 = tile.x / columns;
     const u1 = (tile.x + 1) / columns;

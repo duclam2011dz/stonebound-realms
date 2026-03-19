@@ -310,6 +310,147 @@ canvas {
   height: 26px;
 }
 
+.item-tooltip {
+  position: fixed;
+  z-index: 45;
+  min-width: 170px;
+  max-width: 260px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: linear-gradient(160deg, rgba(32, 44, 58, 0.96), rgba(12, 16, 22, 0.96));
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.55);
+  color: #f2f7ff;
+  font-size: 13px;
+  letter-spacing: 0.2px;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(8px, 8px) scale(0.98);
+  transition:
+    opacity 0.12s ease,
+    transform 0.12s ease,
+    visibility 0.12s ease;
+  display: grid;
+  gap: 6px;
+}
+
+.item-tooltip::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border-radius: 11px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.08), transparent 45%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.item-tooltip.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(0, 0) scale(1);
+}
+
+.item-tooltip-title {
+  position: relative;
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  z-index: 1;
+}
+
+.item-tooltip-tags {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  z-index: 1;
+}
+
+.item-tooltip-tags.is-hidden {
+  display: none;
+}
+
+.item-tooltip-tag {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.item-tooltip-tag--block {
+  background: rgba(98, 179, 78, 0.24);
+  color: #dff7d8;
+}
+
+.item-tooltip-tag--food {
+  background: rgba(240, 180, 100, 0.24);
+  color: #fff0cf;
+}
+
+.item-tooltip-tag--tool {
+  background: rgba(120, 190, 255, 0.22);
+  color: #d9efff;
+}
+
+.item-tooltip-tag--weapon {
+  background: rgba(255, 125, 125, 0.22);
+  color: #ffe2e2;
+}
+
+.item-tooltip-tag--material {
+  background: rgba(200, 200, 200, 0.2);
+  color: #f3f3f3;
+}
+
+.item-tooltip-tag--utility {
+  background: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.item-tooltip-lines {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  z-index: 1;
+}
+
+.item-tooltip-lines.is-hidden {
+  display: none;
+}
+
+.item-tooltip-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.item-tooltip-label {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.item-tooltip-value {
+  font-weight: 700;
+  color: #f5f8ff;
+}
+
+.item-tooltip-line--damage .item-tooltip-value {
+  color: #ff9b9b;
+}
+
+.item-tooltip-line--speed .item-tooltip-value {
+  color: #7ad9ff;
+}
+
+.item-tooltip-line--hunger .item-tooltip-value {
+  color: #f1c374;
+}
+
 #crosshair {
   position: absolute;
   left: 50%;

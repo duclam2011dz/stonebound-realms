@@ -74,6 +74,34 @@ const RECIPES: CraftingRecipe[] = [
     result: makeItem('wooden_sword'),
     resultCount: 1,
     requiresTable: true
+  },
+  {
+    id: 'stone_pickaxe',
+    width: 3,
+    height: 3,
+    pattern: [
+      makeBlock('stone'),
+      makeBlock('stone'),
+      makeBlock('stone'),
+      null,
+      makeItem('stick'),
+      null,
+      null,
+      makeItem('stick'),
+      null
+    ],
+    result: makeItem('stone_pickaxe'),
+    resultCount: 1,
+    requiresTable: true
+  },
+  {
+    id: 'stone_sword',
+    width: 1,
+    height: 3,
+    pattern: [makeBlock('stone'), makeBlock('stone'), makeItem('stick')],
+    result: makeItem('stone_sword'),
+    resultCount: 1,
+    requiresTable: true
   }
 ];
 

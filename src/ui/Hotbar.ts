@@ -5,7 +5,8 @@ import { getFoodDefinition } from '../inventory/foodDefinitions';
 import { getItemDefinition } from '../inventory/itemDefinitions';
 import type { InventorySlot } from '../inventory/itemTypes';
 import { isBlockSlot, isFoodSlot, isItemSlot } from '../inventory/itemTypes';
-import { getItemTooltip } from '../inventory/itemTooltip';
+import { getItemTooltipData } from '../inventory/itemTooltip';
+import { getItemTooltipUI, type ItemTooltipUI } from './ItemTooltipUI';
 import type { BlockType } from '../world/services/BlockPalette';
 
 const FALLBACK_COLORS = {
@@ -42,6 +43,7 @@ export class Hotbar {
   selectedIndex: number;
   slotElements: HTMLElement[];
   proceduralAtlasImageUrl: string;
+  tooltip: ItemTooltipUI;
 
   constructor(rootElement: HTMLElement | null, inventoryState: InventoryState) {
     this.rootElement = rootElement;
@@ -49,6 +51,7 @@ export class Hotbar {
     this.selectedIndex = 0;
     this.slotElements = [];
     this.proceduralAtlasImageUrl = getProceduralAtlasAssets().imageUrl;
+    this.tooltip = getItemTooltipUI();
 
     this.render();
     this.setSelected(0);
@@ -64,6 +67,7 @@ export class Hotbar {
     for (let index = 0; index < 9; index++) {
       const cell = document.createElement('div');
       cell.className = 'hotbar-slot';
+      cell.dataset.slotIndex = String(index);
 
       const key = document.createElement('span');
       key.className = 'hotbar-key';
@@ -79,7 +83,26 @@ export class Hotbar {
       cell.appendChild(count);
       this.rootElement.appendChild(cell);
       this.slotElements.push(cell);
+
+      this.bindTooltipHandlers(cell, index);
     }
+  }
+
+  bindTooltipHandlers(element: HTMLElement, index: number): void {
+    element.addEventListener('mouseenter', (event: MouseEvent) => {
+      const data = getItemTooltipData(this.inventoryState.getSlot(index));
+      if (!data) {
+        this.tooltip.hide();
+        return;
+      }
+      this.tooltip.show(data, event.clientX, event.clientY);
+    });
+    element.addEventListener('mousemove', (event: MouseEvent) => {
+      this.tooltip.move(event.clientX, event.clientY);
+    });
+    element.addEventListener('mouseleave', () => {
+      this.tooltip.hide();
+    });
   }
 
   applyAtlasSwatch(swatchElement: HTMLElement, slot: InventorySlot | null): void {
@@ -140,7 +163,6 @@ export class Hotbar {
         count.textContent = quantity > 1 ? String(quantity) : '';
       }
       slotElement.classList.toggle('is-empty', !slotData);
-      slotElement.title = slotData ? getItemTooltip(slotData) : '';
     }
   }
 

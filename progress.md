@@ -371,7 +371,7 @@ Validation/tests:
   - shot-0 chÆ°a load game JS.
 - WEB_GAME_CLIENT via Vite dev server:
   - `output/web-game-vite/shot-0..2.png`, `state-0..2.json`.
-  - KhÃ´ng cÃ³ errors-*.json.
+  - KhÃ´ng cÃ³ errors-\*.json.
   - Kiá»ƒm tra visually: icon trái tim + thá»‹t hiá»ƒn thá»‹ trÃªn HUD.
 
 Update 2026-03-18 (inventory click-to-carry + biome blend + mob textures):
@@ -393,4 +393,4 @@ Validation/tests:
 
 - WEB_GAME_CLIENT via Vite dev server:
   - `output/web-game-vite-2/shot-0..2.png`, `state-0..2.json`.
-  - KhÃ´ng cÃ³ errors-*.json, HUD hiá»ƒn thá»‹ bÃ¬nh thÆ°á»ng.
+  - KhÃ´ng cÃ³ errors-\*.json, HUD hiá»ƒn thá»‹ bÃ¬nh thÆ°á»ng.

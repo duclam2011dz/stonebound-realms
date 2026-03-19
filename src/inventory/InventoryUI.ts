@@ -5,7 +5,8 @@ import { getFoodDefinition } from './foodDefinitions';
 import { getItemDefinition, getItemMaxStack } from './itemDefinitions';
 import type { InventoryItem, InventorySlot } from './itemTypes';
 import { getItemKey, isBlockSlot, isFoodSlot, isItemSlot } from './itemTypes';
-import { getItemTooltip } from './itemTooltip';
+import { getItemTooltipData } from './itemTooltip';
+import { getItemTooltipUI, type ItemTooltipUI } from '../ui/ItemTooltipUI';
 import type { BlockType } from '../world/services/BlockPalette';
 
 const FALLBACK_COLORS = {
@@ -124,6 +125,7 @@ export class InventoryUI {
   dragGhost: HTMLElement | null;
   dragGhostSwatch: HTMLElement | null;
   dragGhostCount: HTMLElement | null;
+  tooltip: ItemTooltipUI;
 
   constructor({
     overlayElement,
@@ -155,6 +157,7 @@ export class InventoryUI {
     this.dragGhost = null;
     this.dragGhostSwatch = null;
     this.dragGhostCount = null;
+    this.tooltip = getItemTooltipUI();
 
     this.renderGrid();
     this.renderCraftingGrid();
@@ -221,6 +224,10 @@ export class InventoryUI {
         this.onCraft();
         this.refreshCraftingSlots();
       });
+      this.bindTooltipHandlers(
+        this.craftingResultElement,
+        () => this.getCraftingResult?.() ?? null
+      );
       this.craftingResultBound = true;
     }
   }
@@ -249,17 +256,43 @@ export class InventoryUI {
 
       if (event.button === 2) {
         event.preventDefault();
+        this.tooltip.hide();
         this.handleRightClick(targetGroup, targetIndex, event.clientX, event.clientY);
         return;
       }
 
       if (event.button === 0) {
         event.preventDefault();
+        this.tooltip.hide();
         this.handleLeftClick(targetGroup, targetIndex, event.clientX, event.clientY);
       }
     });
 
+    this.bindTooltipHandlers(slot, () => {
+      const state = this.getStateForGroup(group);
+      return state?.getSlot(index) ?? null;
+    });
+
     return slot;
+  }
+
+  bindTooltipHandlers(element: HTMLElement, getSlot: () => InventorySlot | null): void {
+    element.addEventListener('mouseenter', (event: MouseEvent) => {
+      if (this.cursorDrag) return;
+      const data = getItemTooltipData(getSlot());
+      if (!data) {
+        this.tooltip.hide();
+        return;
+      }
+      this.tooltip.show(data, event.clientX, event.clientY);
+    });
+    element.addEventListener('mousemove', (event: MouseEvent) => {
+      if (this.cursorDrag) return;
+      this.tooltip.move(event.clientX, event.clientY);
+    });
+    element.addEventListener('mouseleave', () => {
+      this.tooltip.hide();
+    });
   }
 
   getStateForGroup(group: SlotGroup): InventoryState | null {
@@ -466,7 +499,6 @@ export class InventoryUI {
       }
       slotElement.classList.toggle('is-empty', !slotItem);
       slotElement.setAttribute('draggable', 'false');
-      slotElement.title = slotItem ? getItemTooltip(slotItem) : '';
     });
   }
 
@@ -487,7 +519,6 @@ export class InventoryUI {
       }
       slotElement.classList.toggle('is-empty', !slotItem);
       slotElement.setAttribute('draggable', 'false');
-      slotElement.title = slotItem ? getItemTooltip(slotItem) : '';
     });
 
     const result = this.getCraftingResult?.() ?? null;
@@ -501,8 +532,6 @@ export class InventoryUI {
     this.craftingResultCount.textContent = quantity > 1 ? String(quantity) : '';
     this.craftingResultElement?.classList.toggle('is-empty', !result);
     this.craftingResultElement?.setAttribute('draggable', 'false');
-    this.craftingResultElement &&
-      (this.craftingResultElement.title = result ? getItemTooltip(result) : '');
   }
 
   clearCraftingResult(): void {
@@ -536,6 +565,7 @@ export class InventoryUI {
     this.isOpen = nextOpen;
     if (!nextOpen) {
       this.cancelCursorDrag();
+      this.tooltip.hide();
     }
     this.overlayElement?.classList.toggle('is-hidden', !nextOpen);
   }

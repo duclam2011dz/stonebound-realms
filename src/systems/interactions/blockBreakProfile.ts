@@ -1,5 +1,8 @@
 import type { BlockType } from '../../world/services/BlockPalette';
-import { WOODEN_PICKAXE_STONE_MULTIPLIER } from '../../inventory/itemDefinitions';
+import {
+  STONE_PICKAXE_STONE_MULTIPLIER,
+  WOODEN_PICKAXE_STONE_MULTIPLIER
+} from '../../inventory/itemDefinitions';
 import type { InventorySlot } from '../../inventory/itemTypes';
 import { isItemSlot } from '../../inventory/itemTypes';
 
@@ -20,8 +23,13 @@ export function getBreakDurationMs(
   tool: InventorySlot | null = null
 ): number {
   const base = BREAK_DURATION_MS[blockType] ?? 450;
-  if (blockType === 'stone' && isItemSlot(tool) && tool.itemType === 'wooden_pickaxe') {
-    return Math.max(1, Math.round(base * WOODEN_PICKAXE_STONE_MULTIPLIER));
+  if (blockType === 'stone' && isItemSlot(tool)) {
+    if (tool.itemType === 'stone_pickaxe') {
+      return Math.max(1, Math.round(base * STONE_PICKAXE_STONE_MULTIPLIER));
+    }
+    if (tool.itemType === 'wooden_pickaxe') {
+      return Math.max(1, Math.round(base * WOODEN_PICKAXE_STONE_MULTIPLIER));
+    }
   }
   return base;
 }

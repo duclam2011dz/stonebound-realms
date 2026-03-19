@@ -39,7 +39,14 @@ const metrics = await page.evaluate(() => {
     for (let i = 0; i < inventory.size; i++) {
       const slot = inventory.getSlot(i);
       if (!slot) continue;
-      result.push({ index: i, blockType: slot.blockType, quantity: slot.quantity });
+      result.push({
+        index: i,
+        kind: slot.kind,
+        blockType: slot.kind === 'block' ? slot.blockType : null,
+        itemType: slot.kind === 'item' ? slot.itemType : null,
+        foodType: slot.kind === 'food' ? slot.foodType : null,
+        quantity: slot.quantity
+      });
     }
     return result;
   };
@@ -145,6 +152,60 @@ const metrics = await page.evaluate(() => {
   const postPlaceInventory = scanInventory();
   const placedAtHole = game.world.isBlockFilled(0, 73, -3);
 
+  const prepareStoneBreakZone = () => {
+    for (let x = -1; x <= 1; x++) {
+      for (let y = 71; y <= 74; y++) {
+        for (let z = -7; z <= 0; z++) {
+          game.world.removeBlock(x, y, z);
+        }
+      }
+    }
+    game.world.setBlock(0, 73, -3, 'stone');
+    game.world.rebuildChunksAroundBlock(0, -3);
+    while (game.world.hasPendingChunkWork()) {
+      game.world.processChunkQueue(96, 24);
+    }
+  };
+
+  const breakStoneWithTool = (itemType) => {
+    clearInventory();
+    inventory.setSlot(0, { kind: 'item', itemType, quantity: 1 });
+    game.hotbar.setSelected(0);
+    transform.position.set(0.5, 72, 0.5);
+    transform.yaw = 0;
+    transform.pitch = 0;
+    physics.velocity.set(0, 0, 0);
+    physics.onGround = false;
+    game.world.updateVisibleChunksAround(transform.position, true);
+    while (game.world.hasPendingChunkWork()) {
+      game.world.processChunkQueue(96, 24);
+    }
+    prepareStoneBreakZone();
+    game.systems.camera.update(game.ecs, game.playerEntityId, game.renderContext.camera);
+    controller.enabled = false;
+    game.input.state.breakHeld = true;
+    let frames = 0;
+    while (game.world.isBlockFilled(0, 73, -3) && frames < 240) {
+      advanceFrames(1);
+      frames += 1;
+    }
+    game.input.state.breakHeld = false;
+    controller.enabled = true;
+    advanceFrames(2);
+    return { frames, broke: !game.world.isBlockFilled(0, 73, -3) };
+  };
+
+  const woodenPickaxeBreak = breakStoneWithTool('wooden_pickaxe');
+  const stonePickaxeBreak = breakStoneWithTool('stone_pickaxe');
+  const toolBreakMetrics = {
+    woodenPickaxe: woodenPickaxeBreak,
+    stonePickaxe: stonePickaxeBreak,
+    fasterWithStone:
+      stonePickaxeBreak.frames > 0 &&
+      woodenPickaxeBreak.frames > 0 &&
+      stonePickaxeBreak.frames < woodenPickaxeBreak.frames
+  };
+
   clearInventory();
   inventory.addBlock('grass', 130);
   inventory.addBlock('grass', 10);
@@ -244,6 +305,46 @@ const metrics = await page.evaluate(() => {
     if (size > largestComponent) largestComponent = size;
   }
 
+  const mobSystem = game.systems.mobs;
+  const mobCountBefore = mobSystem.getMobCount();
+  const mobTypes = ['pig', 'cow', 'chicken', 'sheep'];
+  const mobSpawnResults = [];
+  const spawnBaseX = 6;
+  const spawnBaseZ = -14;
+  const spawnSpacing = 5;
+
+  for (let i = 0; i < mobTypes.length; i++) {
+    const type = mobTypes[i];
+    const x = spawnBaseX + i * spawnSpacing;
+    const z = spawnBaseZ;
+    game.world.ensureChunksAroundWorld(Math.floor(x), Math.floor(z), 1);
+    const surfaceY = game.world.terrain.getHeight(x, z);
+    for (let y = surfaceY + 1; y <= surfaceY + 3; y++) {
+      game.world.removeBlock(x, y, z);
+    }
+    const spawn = transform.position.clone();
+    spawn.set(x + 0.5, surfaceY + 1, z + 0.5);
+    const entityId = mobSystem.spawnMob(type, spawn, { ignoreCap: true });
+    mobSpawnResults.push({ type, spawned: Boolean(entityId) });
+  }
+
+  while (game.world.hasPendingChunkWork()) {
+    game.world.processChunkQueue(96, 24);
+  }
+  advanceFrames(90);
+
+  const mobPositions = mobSystem.getMobPositions();
+  const mobCounts = {};
+  for (const entry of mobPositions) {
+    mobCounts[entry.type] = (mobCounts[entry.type] ?? 0) + 1;
+  }
+  const mobSpawnMetrics = {
+    before: mobCountBefore,
+    after: mobSystem.getMobCount(),
+    spawnResults: mobSpawnResults,
+    counts: mobCounts
+  };
+
   return {
     renderDistanceMetrics,
     maxDiagonalSpeed,
@@ -253,6 +354,8 @@ const metrics = await page.evaluate(() => {
     inventoryAfterBreak: postBreakInventory,
     placedAtHole,
     inventoryAfterPlace: postPlaceInventory,
+    toolBreakMetrics,
+    mobSpawnMetrics,
     stackLayout,
     insertionOrderLayout,
     insertedStoneSlot,

@@ -17,7 +17,7 @@ import { GAMEMODE_SURVIVAL } from '../game/gamemode/gameModes';
 import type { InventoryState } from '../inventory/InventoryState';
 import type { InventorySlot } from '../inventory/itemTypes';
 import { isItemSlot } from '../inventory/itemTypes';
-import { WOODEN_SWORD_DAMAGE } from '../inventory/itemDefinitions';
+import { getItemDefinition } from '../inventory/itemDefinitions';
 import { getMobDefinition } from '../mobs/mobDefinitions';
 
 const ATTACK_RANGE = 3.2;
@@ -79,10 +79,9 @@ export class CombatSystem {
       COMPONENT_TRANSFORM
     );
     if (!mob) return false;
-    const baseDamage =
-      isItemSlot(heldItem) && heldItem.itemType === 'wooden_sword'
-        ? WOODEN_SWORD_DAMAGE
-        : BASE_DAMAGE;
+    const baseDamage = isItemSlot(heldItem)
+      ? (getItemDefinition(heldItem.itemType).tool?.attackDamage ?? BASE_DAMAGE)
+      : BASE_DAMAGE;
     const scaled = baseDamage * (0.2 + 0.8 * strength);
     mob.health = Math.max(0, mob.health - scaled);
     mob.hitFlashTimer = HIT_FLASH_SECONDS;
