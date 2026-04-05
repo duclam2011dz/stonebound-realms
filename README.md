@@ -28,7 +28,7 @@ A voxel sandbox prototype inspired by classic block worlds. Procedural terrain, 
 
 1. Install dependencies: `npm install`
 2. Start dev server: `npm run dev`
-3. Open the game: `http://localhost:5173/game.html`
+3. Open the game: `http://localhost:5173/pages/game.html`
 
 ## Scripts
 
@@ -55,12 +55,14 @@ A voxel sandbox prototype inspired by classic block worlds. Procedural terrain, 
 
 ## Project Structure
 
-- `src/core`: input, rendering setup, and shared engine utilities
-- `src/ecs`: ECS components + world
-- `src/game`: main game loop, systems wiring, and commands
-- `src/systems`: gameplay systems (movement, chunk streaming, interactions, lighting)
-- `src/world`: voxel world, storage, terrain, and meshing
-- `src/ui`: HUD, hotbar, menus, chat
+- `client/src/core`: input, rendering setup, and shared engine utilities
+- `client/src/ecs`: ECS components + world
+- `client/src/game`: main game loop, systems wiring, and commands
+- `client/src/systems`: gameplay systems (movement, chunk streaming, interactions, lighting)
+- `client/src/world`: voxel world, storage, terrain, and meshing
+- `client/src/ui`: HUD, hotbar, menus, chat, pause UI, and shared settings browser
+- `client/pages`: HTML entry pages
+- `client/styles`: page-level and shared stylesheets
 - `tools`: test and automation scripts
 
 ## CI

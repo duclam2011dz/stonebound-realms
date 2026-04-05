@@ -394,3 +394,97 @@ Validation/tests:
 - WEB_GAME_CLIENT via Vite dev server:
   - `output/web-game-vite-2/shot-0..2.png`, `state-0..2.json`.
   - KhÃ´ng cÃ³ errors-\*.json, HUD hiá»ƒn thá»‹ bÃ¬nh thÆ°á»ng.
+
+Update 2026-04-05 (air-speed cap + chat suggestions/autocomplete):
+
+- Movement / physics:
+  - Added `PLAYER_AIR_MOVE_SPEED_FACTOR = 2 / 3` in `src/config/constants.ts`.
+  - `PlayerMovementSystem` now applies reduced airborne acceleration target and a hard airborne horizontal cap, so jump movement settles at exactly 2/3 of ground forward speed.
+- Chat command UX:
+  - Added command metadata layer in `src/ui/chat/chatCommandMetadata.ts`.
+  - `GameCommandService` now exposes command definitions for `/time`, `/tp`, `/effect`, `/biome`, `/give`, `/gamemode`, `/summon`, `/pos`, `/position`.
+  - `ChatOverlay` now supports slash suggestions, per-argument suggestions after each space, placeholder scaffolds like `<x>` / `<amount>`, `Tab` autocomplete, `ArrowUp` / `ArrowDown` selection, auto-scroll, highlight, and mouse hover/click selection.
+  - Added suggestion panel markup/styles in `game.html` + `game.css`.
+- Validation:
+  - `npm run typecheck`: pass.
+  - `npm run lint`: pass.
+  - Added `tools/test_air_speed_and_chat_suggestions.mjs`.
+  - Playwright smoke test via Vite: pass.
+  - Artifact: `output/air-chat-suggestions/metrics.json`
+    - command autocomplete: `/g` -> `/gamemode `
+    - argument autocomplete: `/gamemode ` -> `spectator`
+    - give suggestions: 18 entries, scrollTop `476`
+    - movement: ground speed `6.0`, air speed `4.0`, ratio `0.6666666667`
+  - Screenshots:
+    - `output/air-chat-suggestions/chat-suggestions.png`
+    - `output/air-chat-suggestions/air-movement.png`
+
+Update 2026-04-05 (pause UI + settings browser + client restructure):
+
+- Project structure:
+  - Moved gameplay source from `src/` to `client/src/`.
+  - Moved HTML entry pages into `client/pages/`.
+  - Moved page CSS into `client/styles/`.
+  - Added `client/index.html` redirect and updated Vite/TypeScript/package paths for the new `client/` root layout.
+- Pause flow:
+  - Added animated pause overlay with Continue, Save World placeholder, Settings, Back To Menu, and close `X`.
+  - `Esc` now toggles pause on/off when gameplay is active.
+  - While paused, gameplay tick logic is frozen: no movement, no time progression, no mob/system updates, no interactions.
+  - Input capture, chat opening, and inventory toggles are blocked while paused.
+- Fullscreen:
+  - Added shared `F11` fullscreen shortcut binding on menu/create-world/game pages.
+  - Escape is no longer used by app logic to exit fullscreen; it is dedicated to pause/chat behavior in-game.
+- Settings UI refactor:
+  - Added reusable settings metadata + browser:
+    - `client/src/ui/settings/settingDefinitions.ts`
+    - `client/src/ui/settings/SettingsBrowser.ts`
+  - Menu settings and pause settings now use the same two-column category/detail layout.
+  - Added per-category search, result meta, empty state, internal scroll, and clearer field cards.
+- New UI/modules:
+  - `client/src/ui/pause/PauseOverlay.ts`
+  - `client/styles/settings-browser.css`
+  - `client/src/app/bindFullscreenShortcut.ts`
+- Validation:
+  - `npm run typecheck`: pass.
+  - `npm run lint`: pass.
+  - Playwright smoke test: `tools/test_pause_and_settings_ui.mjs`.
+  - Existing smoke regression re-run: `tools/test_air_speed_and_chat_suggestions.mjs`.
+  - Artifacts:
+    - `output/pause-settings-ui/metrics.json`
+    - `output/pause-settings-ui/pause-settings.png`
+    - `output/air-chat-suggestions/metrics.json`
+  - Key results:
+    - pause visible after `Esc`: `true`
+    - day/night phase unchanged while paused
+    - settings filter in Camera + search `look` => `Look Sensitivity`
+    - save button shows placeholder status
+    - `F11` fullscreen active in smoke test: `true`
+    - chat/movement regression still passes: `/gamemode` autocomplete + air speed ratio `0.6666666667`
+
+Update 2026-04-05 (settings scroll/layout polish + default help-off):
+
+- Settings browser polish:
+  - Fixed category grid stretching by pinning category rows to content height instead of filling leftover space.
+  - Locked menu settings card and pause settings panel to stable heights so selecting `Movement` no longer distorts the layout.
+  - Added internal wheel scrolling containment for settings field lists in both `client/pages/menu.html` and the pause settings view in `client/pages/game.html`.
+  - Added stable scrollbar gutter for category/detail panes to reduce layout shift when long lists become scrollable.
+- Settings model:
+  - Added `showHelpOverlay` to `client/src/config/constants.ts`, defaulting to `false`.
+  - Added new `Interface` settings category with `Show Help UI` toggle in `client/src/ui/settings/settingDefinitions.ts`.
+  - `SettingsBrowser` now supports both range sliders and toggle fields, and persists toggle changes the same way as numeric settings.
+- HUD/help behavior:
+  - `Hud` now starts with help hidden by default.
+  - `Game` applies `settings.showHelpOverlay` on startup and also syncs `/help on|off` back into saved settings so the preference persists.
+- Validation:
+  - `npm run typecheck`: pass.
+  - `npm run lint`: pass.
+  - `tools/test_pause_and_settings_ui.mjs`: pass after adding checks for:
+    - help UI hidden on initial load
+    - pause settings wheel scroll works
+    - menu settings wheel scroll works
+    - category buttons keep uniform height (`68px`)
+    - interface help setting defaults to `Off`
+  - Regression rerun: `tools/test_air_speed_and_chat_suggestions.mjs`: pass.
+  - Artifacts:
+    - `output/pause-settings-ui/metrics.json`
+    - `output/pause-settings-ui/pause-settings.png`

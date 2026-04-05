@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stonebound Realms - Main Menu</title>
+    <link rel="stylesheet" href="../styles/menu.css" />
+    <link rel="stylesheet" href="../styles/settings-browser.css" />
+  </head>
+
+  <body>
+    <div class="menu-scenery" aria-hidden="true">
+      <div class="menu-sky-glow"></div>
+      <div class="menu-horizon"></div>
+      <div class="menu-grid-fade"></div>
+    </div>
+    <main id="menuOverlay" class="menu-overlay is-visible">
+      <section class="menu-card menu-main-card" id="menuMain">
+        <div class="menu-main-copy">
+          <p class="menu-badge">Survival Sandbox</p>
+          <h1 class="menu-title">Stonebound Realms</h1>
+          <p class="menu-tagline">Classic block-building spirit, smoother modern controls.</p>
+        </div>
+        <div class="menu-main-actions">
+          <button id="playButton" class="menu-button">Start Adventure</button>
+          <button id="settingsButton" class="menu-button menu-button-secondary">
+            Open Settings
+          </button>
+        </div>
+        <div class="menu-footer-note">
+          Browse settings by category, then search within the current group for faster tuning.
+        </div>
+      </section>
+
+      <section class="menu-card settings-card is-hidden" id="settingsPanel">
+        <div class="settings-shell">
+          <div class="settings-shell-header">
+            <div class="settings-shell-copy">
+              <p class="menu-badge">Realm Tuning</p>
+              <h2 class="menu-subtitle">Game Settings</h2>
+              <p class="settings-note">
+                Cleaner layout, faster browsing, and ready to scale when more settings arrive.
+              </p>
+            </div>
+            <button id="backButton" class="menu-button menu-button-secondary settings-back-button">
+              Back
+            </button>
+          </div>
+
+          <div class="settings-browser">
+            <aside class="settings-sidebar">
+              <div class="settings-sidebar-header">
+                <p class="settings-sidebar-label">Categories</p>
+                <p class="settings-sidebar-copy">
+                  Pick a group first to narrow the search scope.
+                </p>
+              </div>
+              <div id="settingsCategories" class="settings-category-list"></div>
+            </aside>
+
+            <section class="settings-detail-pane">
+              <div class="settings-toolbar">
+                <div class="settings-detail-copy">
+                  <h3 id="settingsCategoryTitle" class="settings-detail-title">World</h3>
+                  <p id="settingsCategoryDescription" class="settings-detail-description"></p>
+                </div>
+                <label class="settings-search">
+                  <span class="settings-search-label">Search This Category</span>
+                  <input
+                    id="settingsSearch"
+                    class="settings-search-input"
+                    type="search"
+                    placeholder="Type a setting name..."
+                  />
+                </label>
+              </div>
+
+              <div id="settingsResultMeta" class="settings-result-meta"></div>
+              <div id="settingsFields" class="settings-field-list"></div>
+              <div id="settingsEmpty" class="settings-empty is-hidden">
+                No settings matched this search inside the current category.
+              </div>
+            </section>
+          </div>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="../src/pages/menu/menuPage.ts"></script>
+  </body>
+</html>

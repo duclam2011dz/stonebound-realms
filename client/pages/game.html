@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stonebound Realms - In Game</title>
+    <link rel="stylesheet" href="../styles/game.css" />
+    <link rel="stylesheet" href="../styles/settings-browser.css" />
+  </head>
+  <body>
+    <div id="ui">
+      <div id="crosshair"></div>
+      <div id="breakProgress" class="is-hidden"><div id="breakProgressFill"></div></div>
+      <div id="statusBars">
+        <div id="healthBar" class="status-bar status-bar-left" aria-label="Health"></div>
+        <div id="hungerBar" class="status-bar status-bar-right" aria-label="Hunger"></div>
+      </div>
+      <div id="hotbar"></div>
+      <div id="help">
+        Click to lock mouse | WASD move | Space jump | E inventory | Esc pause | F11 fullscreen |
+        1-9 select slot | Hold LMB break | RMB place / eat | R reload chunks | T chat | Tab
+        autocomplete | Up/Down select | /time /tp /effect /gamemode /biome /give /summon /pos
+      </div>
+      <div id="chatRoot" class="chat-root is-hidden">
+        <div id="chatLog" class="chat-log"></div>
+        <div id="chatSuggestions" class="chat-suggestions is-hidden"></div>
+        <div id="chatInputRow" class="chat-input-row is-hidden">
+          <span class="chat-prompt">&gt;</span>
+          <input id="chatInput" class="chat-input" type="text" maxlength="180" autocomplete="off" />
+        </div>
+      </div>
+
+      <div id="inventoryOverlay" class="inventory-overlay is-hidden">
+        <div class="inventory-panel">
+          <h2 class="inventory-title">Inventory</h2>
+          <div class="inventory-layout">
+            <div class="inventory-main">
+              <div id="inventoryGrid" class="inventory-grid"></div>
+            </div>
+            <div class="crafting-panel">
+              <h3 class="crafting-title">Crafting</h3>
+              <div class="crafting-row">
+                <div id="craftingGrid" class="crafting-grid"></div>
+                <div class="crafting-arrow">→</div>
+                <div id="craftingResult" class="inventory-slot crafting-result"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="pauseOverlay" class="pause-overlay" aria-hidden="true">
+        <div class="pause-panel">
+          <button id="pauseCloseButton" class="pause-close-button" type="button" aria-label="Close pause menu">
+            ×
+          </button>
+
+          <section id="pauseMainView" class="pause-view">
+            <p class="pause-overline">Paused</p>
+            <h2 class="pause-title">Adventure On Hold</h2>
+            <p class="pause-subtitle">
+              Time, mobs, physics, and every gameplay tick are frozen until you continue.
+            </p>
+
+            <div class="pause-actions">
+              <button id="pauseContinueButton" class="pause-button pause-button-primary" type="button">
+                Continue Game
+              </button>
+              <button id="pauseSaveButton" class="pause-button" type="button">Save World</button>
+              <button id="pauseSettingsButton" class="pause-button" type="button">Settings</button>
+              <button id="pauseMenuButton" class="pause-button pause-button-secondary" type="button">
+                Back To Menu
+              </button>
+            </div>
+
+            <p id="pauseStatus" class="pause-status is-hidden"></p>
+          </section>
+
+          <section id="pauseSettingsView" class="pause-view is-hidden">
+            <div class="pause-settings-header">
+              <div class="pause-settings-copy">
+                <p class="pause-overline">Settings</p>
+                <h2 class="pause-title pause-title-small">Tune The Realm</h2>
+                <p class="pause-subtitle">
+                  Choose a category on the left, then search only inside that group to narrow the list.
+                </p>
+              </div>
+              <button id="pauseSettingsBackButton" class="pause-chip-button" type="button">
+                Back
+              </button>
+            </div>
+
+            <div class="settings-browser">
+              <aside class="settings-sidebar">
+                <div class="settings-sidebar-header">
+                  <p class="settings-sidebar-label">Categories</p>
+                  <p class="settings-sidebar-copy">World, movement, and camera live in separate groups.</p>
+                </div>
+                <div id="pauseSettingsCategories" class="settings-category-list"></div>
+              </aside>
+
+              <section class="settings-detail-pane">
+                <div class="settings-toolbar">
+                  <div class="settings-detail-copy">
+                    <h3 id="pauseSettingsCategoryTitle" class="settings-detail-title">World</h3>
+                    <p id="pauseSettingsCategoryDescription" class="settings-detail-description"></p>
+                  </div>
+                  <label class="settings-search">
+                    <span class="settings-search-label">Search This Category</span>
+                    <input
+                      id="pauseSettingsSearch"
+                      class="settings-search-input"
+                      type="search"
+                      placeholder="Type a setting name..."
+                    />
+                  </label>
+                </div>
+
+                <div id="pauseSettingsResultMeta" class="settings-result-meta"></div>
+                <div id="pauseSettingsFields" class="settings-field-list"></div>
+                <div id="pauseSettingsEmpty" class="settings-empty is-hidden">
+                  No settings matched this search inside the current category.
+                </div>
+              </section>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <div id="deathOverlay" class="death-overlay is-hidden">
+        <div class="death-panel">
+          <h1 class="death-title">You Died</h1>
+          <p class="death-subtitle">Your spirit lingers at spawn.</p>
+          <div class="death-actions">
+            <button id="respawnButton" class="death-button">Respawn</button>
+            <button id="menuButton" class="death-button death-button-secondary">Menu</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="../src/pages/game/gamePage.ts"></script>
+  </body>
+</html>

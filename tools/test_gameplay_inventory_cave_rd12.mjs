@@ -9,7 +9,7 @@ const browser = await chromium.launch({
   args: ['--use-gl=angle', '--use-angle=swiftshader']
 });
 const page = await browser.newPage();
-await page.goto('http://127.0.0.1:4173/game.html', { waitUntil: 'domcontentloaded' });
+await page.goto('http://127.0.0.1:4173/pages/game.html', { waitUntil: 'domcontentloaded' });
 await page.waitForTimeout(1400);
 
 const metrics = await page.evaluate(() => {
