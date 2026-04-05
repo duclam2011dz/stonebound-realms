@@ -51,7 +51,12 @@
 
       <div id="pauseOverlay" class="pause-overlay" aria-hidden="true">
         <div class="pause-panel">
-          <button id="pauseCloseButton" class="pause-close-button" type="button" aria-label="Close pause menu">
+          <button
+            id="pauseCloseButton"
+            class="pause-close-button"
+            type="button"
+            aria-label="Close pause menu"
+          >
             ×
           </button>
 
@@ -63,12 +68,20 @@
             </p>
 
             <div class="pause-actions">
-              <button id="pauseContinueButton" class="pause-button pause-button-primary" type="button">
+              <button
+                id="pauseContinueButton"
+                class="pause-button pause-button-primary"
+                type="button"
+              >
                 Continue Game
               </button>
               <button id="pauseSaveButton" class="pause-button" type="button">Save World</button>
               <button id="pauseSettingsButton" class="pause-button" type="button">Settings</button>
-              <button id="pauseMenuButton" class="pause-button pause-button-secondary" type="button">
+              <button
+                id="pauseMenuButton"
+                class="pause-button pause-button-secondary"
+                type="button"
+              >
                 Back To Menu
               </button>
             </div>
@@ -82,7 +95,8 @@
                 <p class="pause-overline">Settings</p>
                 <h2 class="pause-title pause-title-small">Tune The Realm</h2>
                 <p class="pause-subtitle">
-                  Choose a category on the left, then search only inside that group to narrow the list.
+                  Choose a category on the left, then search only inside that group to narrow the
+                  list.
                 </p>
               </div>
               <button id="pauseSettingsBackButton" class="pause-chip-button" type="button">
@@ -94,7 +108,9 @@
               <aside class="settings-sidebar">
                 <div class="settings-sidebar-header">
                   <p class="settings-sidebar-label">Categories</p>
-                  <p class="settings-sidebar-copy">World, movement, and camera live in separate groups.</p>
+                  <p class="settings-sidebar-copy">
+                    World, movement, and camera live in separate groups.
+                  </p>
                 </div>
                 <div id="pauseSettingsCategories" class="settings-category-list"></div>
               </aside>
@@ -103,7 +119,10 @@
                 <div class="settings-toolbar">
                   <div class="settings-detail-copy">
                     <h3 id="pauseSettingsCategoryTitle" class="settings-detail-title">World</h3>
-                    <p id="pauseSettingsCategoryDescription" class="settings-detail-description"></p>
+                    <p
+                      id="pauseSettingsCategoryDescription"
+                      class="settings-detail-description"
+                    ></p>
                   </div>
                   <label class="settings-search">
                     <span class="settings-search-label">Search This Category</span>

@@ -1,7 +1,4 @@
-import type {
-  ChatCommandDefinition,
-  ChatCommandSuggestionDefinition
-} from './chatCommandMetadata';
+import type { ChatCommandDefinition, ChatCommandSuggestionDefinition } from './chatCommandMetadata';
 
 const AUTO_HIDE_MS = 3200;
 const FPS_UPDATE_INTERVAL_MS = 250;
@@ -589,10 +586,7 @@ export class ChatOverlay {
       return;
     }
 
-    this.selectedSuggestionIndex = Math.max(
-      0,
-      Math.min(index, this.suggestionItems.length - 1)
-    );
+    this.selectedSuggestionIndex = Math.max(0, Math.min(index, this.suggestionItems.length - 1));
     this.updateSuggestionSelection();
   }
 

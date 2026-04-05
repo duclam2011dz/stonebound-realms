@@ -29,8 +29,7 @@ const openChatWith = async (value) => {
 const getSuggestions = async () =>
   page.$$eval('#chatSuggestions .chat-suggestion', (elements) =>
     elements.map((element) => {
-      const label =
-        element.querySelector('.chat-suggestion-label')?.textContent?.trim() ?? '';
+      const label = element.querySelector('.chat-suggestion-label')?.textContent?.trim() ?? '';
       const description =
         element.querySelector('.chat-suggestion-description')?.textContent?.trim() ?? '';
       return {
@@ -166,7 +165,9 @@ if (argumentAutocompleteValue !== '/gamemode spectator') {
   );
 }
 if (giveSuggestions.length < 12) {
-  throw new Error(`Expected a scrollable give suggestion list, received ${giveSuggestions.length}.`);
+  throw new Error(
+    `Expected a scrollable give suggestion list, received ${giveSuggestions.length}.`
+  );
 }
 if (giveScroll.scrollHeight <= giveScroll.clientHeight || giveScroll.scrollTop <= 0) {
   throw new Error('Expected chat suggestion list to scroll while navigating deep entries.');

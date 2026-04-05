@@ -71,8 +71,7 @@ await page.waitForTimeout(100);
 
 const pauseCategoryHeights = await page.$$eval(
   '#pauseSettingsCategories .settings-category-button',
-  (elements) =>
-    elements.map((element) => Math.round(element.getBoundingClientRect().height))
+  (elements) => elements.map((element) => Math.round(element.getBoundingClientRect().height))
 );
 const pauseCategoryHeightSpread =
   Math.max(...pauseCategoryHeights) - Math.min(...pauseCategoryHeights);
@@ -90,7 +89,10 @@ const pauseFieldScroll = await page.$eval('#pauseSettingsFields', (element) => (
   scrollHeight: element.scrollHeight,
   clientHeight: element.clientHeight
 }));
-if (pauseFieldScroll.scrollHeight <= pauseFieldScroll.clientHeight || pauseFieldScroll.scrollTop <= 0) {
+if (
+  pauseFieldScroll.scrollHeight <= pauseFieldScroll.clientHeight ||
+  pauseFieldScroll.scrollTop <= 0
+) {
   throw new Error('Expected pause settings field list to scroll with the mouse wheel.');
 }
 
@@ -104,7 +106,9 @@ const filteredLabels = await page.$$eval('#pauseSettingsFields .setting-card-lab
   elements.map((element) => element.textContent?.trim() ?? '')
 );
 if (filteredLabels.length !== 1 || filteredLabels[0] !== 'Look Sensitivity') {
-  throw new Error(`Expected only Look Sensitivity after category+search filter, got ${filteredLabels.join(', ')}.`);
+  throw new Error(
+    `Expected only Look Sensitivity after category+search filter, got ${filteredLabels.join(', ')}.`
+  );
 }
 
 await page.screenshot({
@@ -146,12 +150,14 @@ await page.waitForTimeout(100);
 
 const menuCategoryHeights = await page.$$eval(
   '#settingsCategories .settings-category-button',
-  (elements) =>
-    elements.map((element) => Math.round(element.getBoundingClientRect().height))
+  (elements) => elements.map((element) => Math.round(element.getBoundingClientRect().height))
 );
-const menuCategoryHeightSpread = Math.max(...menuCategoryHeights) - Math.min(...menuCategoryHeights);
+const menuCategoryHeightSpread =
+  Math.max(...menuCategoryHeights) - Math.min(...menuCategoryHeights);
 if (menuCategoryHeightSpread > 12 || Math.max(...menuCategoryHeights) > 92) {
-  throw new Error(`Menu category buttons stretched unexpectedly: ${menuCategoryHeights.join(', ')}.`);
+  throw new Error(
+    `Menu category buttons stretched unexpectedly: ${menuCategoryHeights.join(', ')}.`
+  );
 }
 
 await page.locator('#settingsFields').hover();
@@ -162,7 +168,10 @@ const menuFieldScroll = await page.$eval('#settingsFields', (element) => ({
   scrollHeight: element.scrollHeight,
   clientHeight: element.clientHeight
 }));
-if (menuFieldScroll.scrollHeight <= menuFieldScroll.clientHeight || menuFieldScroll.scrollTop <= 0) {
+if (
+  menuFieldScroll.scrollHeight <= menuFieldScroll.clientHeight ||
+  menuFieldScroll.scrollTop <= 0
+) {
   throw new Error('Expected menu settings field list to scroll with the mouse wheel.');
 }
 

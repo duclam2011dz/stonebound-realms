@@ -28,9 +28,7 @@ export type RangeSettingFieldDefinition = BaseSettingFieldDefinition<SettingKeyB
   precision: number;
 };
 
-export type ToggleSettingFieldDefinition = BaseSettingFieldDefinition<
-  SettingKeyByType<boolean>
-> & {
+export type ToggleSettingFieldDefinition = BaseSettingFieldDefinition<SettingKeyByType<boolean>> & {
   type: 'toggle';
   enabledLabel?: string;
   disabledLabel?: string;

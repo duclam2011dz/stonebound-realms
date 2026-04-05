@@ -121,7 +121,9 @@ export class SettingsBrowser {
 
       const count = document.createElement('span');
       count.className = 'settings-category-count';
-      count.textContent = String(SETTING_FIELDS.filter((field) => field.category === category.id).length);
+      count.textContent = String(
+        SETTING_FIELDS.filter((field) => field.category === category.id).length
+      );
       button.appendChild(count);
 
       this.categoryListElement.appendChild(button);
