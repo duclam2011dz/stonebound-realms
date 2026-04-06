@@ -49,7 +49,7 @@ export class MobSystem {
   settings: GameSettings;
   playerEntityId: number;
   spawnTimer: number;
-  materials: Record<MobType, THREE.MeshLambertMaterial>;
+  materials: Record<MobType, Record<string, THREE.MeshLambertMaterial>>;
   textureLoader: THREE.TextureLoader;
   tempVec: THREE.Vector3;
 
@@ -68,17 +68,31 @@ export class MobSystem {
     this.settings = options.settings;
     this.playerEntityId = options.playerEntityId;
     this.spawnTimer = 0;
-    this.materials = {
-      pig: new THREE.MeshLambertMaterial({ color: 0xd8adb0 }),
-      cow: new THREE.MeshLambertMaterial({ color: 0xb59a86 }),
-      chicken: new THREE.MeshLambertMaterial({ color: 0xe6dfc9 }),
-      sheep: new THREE.MeshLambertMaterial({ color: 0xd9d3c8 })
+    const fallbackColors: Record<MobType, Record<string, number>> = {
+      pig: { base: 0xd8adb0 },
+      cow: { base: 0xb59a86 },
+      chicken: { base: 0xe6dfc9 },
+      sheep: { base: 0xcfc4b8, wool: 0xf1ece1 }
     };
+    this.materials = Object.fromEntries(
+      MOB_TYPES.map((type) => {
+        const definition = getMobDefinition(type);
+        const layeredMaterials = Object.fromEntries(
+          Object.keys(definition.model.textureLayers).map((layer) => [
+            layer,
+            new THREE.MeshLambertMaterial({
+              color: fallbackColors[type][layer] ?? fallbackColors[type].base ?? 0xffffff
+            })
+          ])
+        );
+        return [type, layeredMaterials];
+      })
+    ) as Record<MobType, Record<string, THREE.MeshLambertMaterial>>;
     this.textureLoader = new THREE.TextureLoader();
     this.tempVec = new THREE.Vector3();
 
     for (const type of MOB_TYPES) {
-      this.initializeMobMaterial(type);
+      this.initializeMobMaterials(type);
     }
   }
 
@@ -137,41 +151,46 @@ export class MobSystem {
       scene: this.scene,
       definition,
       position,
-      material: this.materials[type]
+      materials: this.materials[type]
     });
   }
 
-  initializeMobMaterial(type: MobType): void {
+  initializeMobMaterials(type: MobType): void {
     const definition = getMobDefinition(type);
-    this.textureLoader.load(
-      definition.skin.textureUrl,
-      (texture) => {
-        texture.colorSpace = THREE.SRGBColorSpace;
-        texture.needsUpdate = true;
-        texture.magFilter = THREE.NearestFilter;
-        texture.minFilter = THREE.NearestFilter;
-        texture.generateMipmaps = false;
-        const material = this.materials[type];
-        material.map = texture;
-        material.color.set(0xffffff);
-        material.needsUpdate = true;
-        this.refreshMobMaterials(type, texture);
-      },
-      undefined,
-      (error: unknown) => {
-        console.error(`Failed to load mob texture for ${type}.`, error);
-      }
-    );
+    for (const [layer, textureDef] of Object.entries(definition.model.textureLayers)) {
+      this.textureLoader.load(
+        textureDef.textureUrl,
+        (texture) => {
+          texture.colorSpace = THREE.SRGBColorSpace;
+          texture.needsUpdate = true;
+          texture.magFilter = THREE.NearestFilter;
+          texture.minFilter = THREE.NearestFilter;
+          texture.generateMipmaps = false;
+          const material = this.materials[type][layer];
+          if (!material) return;
+          material.map = texture;
+          material.color.set(0xffffff);
+          material.needsUpdate = true;
+          this.refreshMobMaterials(type, layer, texture);
+        },
+        undefined,
+        (error: unknown) => {
+          console.error(`Failed to load mob texture for ${type}:${layer}.`, error);
+        }
+      );
+    }
   }
 
-  refreshMobMaterials(type: MobType, texture: THREE.Texture): void {
+  refreshMobMaterials(type: MobType, layer: string, texture: THREE.Texture): void {
     const mobEntities = this.ecs.getEntitiesWith([COMPONENT_MOB, COMPONENT_MOB_RENDER]);
     for (const entityId of mobEntities) {
       const mob = this.ecs.getComponent<MobComponent>(entityId, COMPONENT_MOB);
       const render = this.ecs.getComponent<MobRenderComponent>(entityId, COMPONENT_MOB_RENDER);
       if (!mob || !render || mob.type !== type) continue;
-      render.parts.material.map = texture;
-      render.parts.material.needsUpdate = true;
+      const material = render.parts.materials[layer];
+      if (!material) continue;
+      material.map = texture;
+      material.needsUpdate = true;
     }
   }
 
@@ -262,9 +281,13 @@ export class MobSystem {
     if (mob) {
       if (mob.hitFlashTimer > 0) {
         mob.hitFlashTimer = Math.max(0, mob.hitFlashTimer - dt);
-        render.parts.material.color.set(0xff6a6a);
+        for (const material of render.parts.materialList) {
+          material.color.set(0xff6a6a);
+        }
       } else {
-        render.parts.material.color.set(0xffffff);
+        for (const material of render.parts.materialList) {
+          material.color.set(0xffffff);
+        }
       }
 
       if (mob.knockback.lengthSq() > 0.0004) {
@@ -325,12 +348,7 @@ export class MobSystem {
       render.parts.root.rotation.y = transform.yaw;
       ai.walkPhase += dt * definition.speed * 8;
       const swing = Math.sin(ai.walkPhase) * 0.9;
-      if (render.parts.legs.length >= 4) {
-        render.parts.legs[0]!.rotation.x = swing;
-        render.parts.legs[1]!.rotation.x = -swing;
-        render.parts.legs[2]!.rotation.x = -swing;
-        render.parts.legs[3]!.rotation.x = swing;
-      }
+      this.applyMobAnimation(render, definition.type, swing, ai.walkPhase, true);
       return;
     }
 
@@ -357,11 +375,39 @@ export class MobSystem {
     const moving = ai.path.length > 0 ? 1 : 0;
     ai.walkPhase += dt * speed * 6 * moving;
     const swing = Math.sin(ai.walkPhase) * 0.6;
-    if (render.parts.legs.length >= 4) {
-      render.parts.legs[0]!.rotation.x = swing;
-      render.parts.legs[1]!.rotation.x = -swing;
-      render.parts.legs[2]!.rotation.x = -swing;
-      render.parts.legs[3]!.rotation.x = swing;
+    this.applyMobAnimation(render, definition.type, swing, ai.walkPhase, moving > 0);
+  }
+
+  applyMobAnimation(
+    render: MobRenderComponent,
+    type: MobType,
+    swing: number,
+    walkPhase: number,
+    moving: boolean
+  ): void {
+    const animated = render.parts.animated;
+
+    if (
+      animated.rightFrontLeg &&
+      animated.leftFrontLeg &&
+      animated.rightHindLeg &&
+      animated.leftHindLeg
+    ) {
+      animated.rightFrontLeg.rotation.x = swing;
+      animated.leftFrontLeg.rotation.x = -swing;
+      animated.rightHindLeg.rotation.x = -swing;
+      animated.leftHindLeg.rotation.x = swing;
+    }
+
+    if (animated.rightLeg && animated.leftLeg) {
+      animated.rightLeg.rotation.x = swing;
+      animated.leftLeg.rotation.x = -swing;
+    }
+
+    if (type === 'chicken' && animated.rightWing && animated.leftWing) {
+      const flap = moving ? Math.sin(walkPhase * 1.4) * 0.35 : 0.12;
+      animated.rightWing.rotation.z = flap;
+      animated.leftWing.rotation.z = -flap;
     }
   }
 

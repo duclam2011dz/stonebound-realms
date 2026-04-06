@@ -517,3 +517,40 @@ Update 2026-04-06 (PNG block, mob, and item textures):
     - `output/png-texture-assets/metrics.json`
     - `output/png-texture-assets/world-textures.png`
     - `output/png-texture-assets/inventory-textures.png`
+
+Update 2026-04-06 (Dependabot cleanup + Java-accurate passive mob models):
+
+- Dependency security:
+  - Upgraded the vulnerable dev toolchain to clear Dependabot alerts:
+    - `vite` -> `^7.3.1`
+    - `eslint` -> `^9.39.4`
+    - `@typescript-eslint/eslint-plugin` -> `^8.58.0`
+    - `@typescript-eslint/parser` -> `^8.58.0`
+    - `eslint-config-prettier` -> `^10.1.8`
+  - Added root `eslint.config.mjs` so `npm run lint` keeps working after the ESLint 9 flat-config migration.
+  - Final `npm audit`: `found 0 vulnerabilities`.
+- Mob model refactor:
+  - Replaced the simplified head/body/leg mob schema with vanilla-style `part -> pivot -> cube` definitions in `client/src/mobs/mobDefinitions.ts`.
+  - Pig now uses the proper Java-style head + snout, long rotated body, and four short legs.
+  - Cow now uses the larger quadruped body, head horns, udder cube, and longer four-leg setup.
+  - Chicken now uses the smaller upright body, two legs only, and two wings; the red throat/beak geometry is mapped from the correct texture region.
+  - Sheep now renders layered skin + wool geometry using both `sheep.png` and `sheep_wool.png`, including inflated wool body/head/leg parts.
+  - `client/src/mobs/createMobModel.ts` now builds exact cuboid meshes from the original Minecraft-style texture offsets instead of the previous coarse box scaling.
+  - `client/src/systems/MobSystem.ts` now supports multi-layer mob materials and per-role animation hooks (quadruped legs vs chicken legs/wings).
+  - `client/src/game/factories/createMobEntity.ts` now places mob render roots at their spawn transform immediately so newly spawned mobs do not flash at the world origin before the first tick.
+- Validation:
+  - `npm run typecheck`: pass.
+  - `npm run lint`: pass.
+  - `npm audit`: pass (`0 vulnerabilities`).
+  - Browser smoke tests:
+    - `tools/test_png_texture_assets.mjs`
+    - `tools/test_pause_and_settings_ui.mjs`
+    - `tools/test_air_speed_and_chat_suggestions.mjs`
+  - Updated PNG texture metrics now confirm:
+    - chicken exposes `rightLeg`, `leftLeg`, `rightWing`, `leftWing`
+    - sheep uses both `base` and `wool` material layers
+    - pig/cow remain four-leg quadrupeds with the expected animated roles
+  - Artifacts:
+    - `output/png-texture-assets/metrics.json`
+    - `output/png-texture-assets/mob-textures.png`
+    - `output/png-texture-assets/world-textures.png`

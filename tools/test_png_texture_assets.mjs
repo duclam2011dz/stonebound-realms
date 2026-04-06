@@ -24,7 +24,9 @@ await page.waitForFunction(() => {
   if (!mobMaterials) return false;
   return (
     blockReady &&
-    ['pig', 'cow', 'chicken', 'sheep'].every((type) => Boolean(mobMaterials[type]?.map?.image))
+    ['pig', 'cow', 'chicken', 'sheep'].every((type) =>
+      Object.values(mobMaterials[type] ?? {}).every((material) => Boolean(material?.map?.image))
+    )
   );
 }, { timeout: 60000 });
 
@@ -105,8 +107,13 @@ const setupMetrics = await page.evaluate(() => {
     );
     if (!entityId) continue;
     const mobTransform = game.ecs.getComponent(entityId, 'transform');
+    const mobRender = game.ecs.getComponent(entityId, 'mob_render');
     if (mobTransform) {
-      mobTransform.yaw = Math.PI;
+      mobTransform.yaw = 0;
+    }
+    if (mobRender && mobTransform) {
+      mobRender.parts.root.position.copy(mobTransform.position);
+      mobRender.parts.root.rotation.y = mobTransform.yaw;
     }
     spawned.push({ type: spawn.type, entityId });
   }
@@ -119,13 +126,32 @@ const setupMetrics = await page.evaluate(() => {
 
   const blockMap = game.world.blockMaterial.map;
   const mobTextureSizes = Object.fromEntries(
-    Object.entries(game.systems.mobs.materials).map(([type, material]) => [
+    Object.entries(game.systems.mobs.materials).map(([type, materials]) => [
       type,
-      {
-        width: material.map?.image?.width ?? 0,
-        height: material.map?.image?.height ?? 0
-      }
+      Object.fromEntries(
+        Object.entries(materials).map(([layer, material]) => [
+          layer,
+          {
+            width: material.map?.image?.width ?? 0,
+            height: material.map?.image?.height ?? 0
+          }
+        ])
+      )
     ])
+  );
+
+  const mobRenderSummary = Object.fromEntries(
+    spawned.map(({ type, entityId }) => {
+      const render = game.ecs.getComponent(entityId, 'mob_render');
+      return [
+        type,
+        {
+          partCount: render?.parts?.root?.children?.length ?? 0,
+          materialLayers: Object.keys(render?.parts?.materials ?? {}),
+          animatedRoles: Object.keys(render?.parts?.animated ?? {})
+        }
+      ];
+    })
   );
 
   return {
@@ -136,7 +162,8 @@ const setupMetrics = await page.evaluate(() => {
       width: blockMap?.image?.width ?? 0,
       height: blockMap?.image?.height ?? 0
     },
-    mobTextureSizes
+    mobTextureSizes,
+    mobRenderSummary
   };
 });
 
@@ -154,8 +181,8 @@ await page.evaluate((origin) => {
   const game = window.__game;
   if (!game) return;
   const camera = game.renderContext.camera;
-  camera.position.set(origin.x + 0.5, origin.y + 7.5, origin.z + 1.5);
-  camera.lookAt(origin.x + 0.5, origin.y + 1.4, origin.z - 10.25);
+  camera.position.set(origin.x + 0.5, origin.y + 2.8, origin.z - 16.5);
+  camera.lookAt(origin.x + 0.5, origin.y + 1.1, origin.z - 10.25);
   game.renderContext.render();
 }, setupMetrics.showcaseOrigin);
 await page.waitForTimeout(100);

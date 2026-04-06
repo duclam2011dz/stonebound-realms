@@ -18,7 +18,7 @@ type CreateMobEntityOptions = {
   scene: THREE.Scene;
   definition: MobDefinition;
   position: THREE.Vector3;
-  material: THREE.MeshLambertMaterial;
+  materials: Record<string, THREE.MeshLambertMaterial>;
 };
 
 export function createMobEntity({
@@ -26,7 +26,7 @@ export function createMobEntity({
   scene,
   definition,
   position,
-  material
+  materials
 }: CreateMobEntityOptions): number {
   const entityId = ecs.createEntity();
   ecs.addComponent(entityId, COMPONENT_TRANSFORM, createTransform(position));
@@ -37,7 +37,8 @@ export function createMobEntity({
   );
   ecs.addComponent(entityId, COMPONENT_MOB_AI, createMobAI());
 
-  const parts = createMobModel(definition, material);
+  const parts = createMobModel(definition, materials);
+  parts.root.position.copy(position);
   ecs.addComponent(entityId, COMPONENT_MOB_RENDER, createMobRender(parts));
   scene.add(parts.root);
   return entityId;
