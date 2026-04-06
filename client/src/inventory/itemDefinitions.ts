@@ -1,5 +1,9 @@
 import type { BlockType } from '../world/services/BlockPalette';
-import { getToolIcon } from '../textures/tools/proceduralToolIcons';
+import stickIconUrl from '../../assets/items/stick.png';
+import woodenPickaxeIconUrl from '../../assets/items/wooden_pickaxe.png';
+import woodenSwordIconUrl from '../../assets/items/wooden_sword.png';
+import stonePickaxeIconUrl from '../../assets/items/stone_pickaxe.png';
+import stoneSwordIconUrl from '../../assets/items/stone_sword.png';
 
 export type ItemType =
   | 'stick'
@@ -30,13 +34,14 @@ const ITEM_DEFINITIONS: Record<ItemType, ItemDefinition> = {
     type: 'stick',
     displayName: 'Stick',
     swatch: '#d1a879',
+    icon: stickIconUrl,
     maxStack: 64
   },
   wooden_pickaxe: {
     type: 'wooden_pickaxe',
     displayName: 'Wooden Pickaxe',
     swatch: '#c7935f',
-    icon: getToolIcon('wooden_pickaxe'),
+    icon: woodenPickaxeIconUrl,
     maxStack: 1,
     tool: {
       breakMultipliers: { stone: WOODEN_PICKAXE_STONE_MULTIPLIER }
@@ -46,7 +51,7 @@ const ITEM_DEFINITIONS: Record<ItemType, ItemDefinition> = {
     type: 'wooden_sword',
     displayName: 'Wooden Sword',
     swatch: '#b9824e',
-    icon: getToolIcon('wooden_sword'),
+    icon: woodenSwordIconUrl,
     maxStack: 1,
     tool: {
       attackDamage: WOODEN_SWORD_DAMAGE
@@ -56,7 +61,7 @@ const ITEM_DEFINITIONS: Record<ItemType, ItemDefinition> = {
     type: 'stone_pickaxe',
     displayName: 'Stone Pickaxe',
     swatch: '#9aa1ac',
-    icon: getToolIcon('stone_pickaxe'),
+    icon: stonePickaxeIconUrl,
     maxStack: 1,
     tool: {
       breakMultipliers: { stone: STONE_PICKAXE_STONE_MULTIPLIER }
@@ -66,7 +71,7 @@ const ITEM_DEFINITIONS: Record<ItemType, ItemDefinition> = {
     type: 'stone_sword',
     displayName: 'Stone Sword',
     swatch: '#9097a3',
-    icon: getToolIcon('stone_sword'),
+    icon: stoneSwordIconUrl,
     maxStack: 1,
     tool: {
       attackDamage: STONE_SWORD_DAMAGE

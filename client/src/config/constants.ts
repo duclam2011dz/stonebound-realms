@@ -42,13 +42,14 @@ export const BLOCK_FACE_TILES = {
     all: { x: 0, y: 4 }
   },
   wood: {
-    all: { x: 1, y: 0 }
+    side: { x: 1, y: 0 },
+    top: { x: 1, y: 1 }
   },
   leaf: {
-    all: { x: 1, y: 1 }
+    all: { x: 1, y: 2 }
   },
   sand: {
-    all: { x: 1, y: 2 }
+    all: { x: 1, y: 3 }
   },
   lamp: {
     all: { x: 2, y: 0 }
@@ -57,6 +58,9 @@ export const BLOCK_FACE_TILES = {
     all: { x: 2, y: 1 }
   },
   crafting_table: {
-    all: { x: 3, y: 1 }
+    top: { x: 3, y: 0 },
+    side: { x: 3, y: 1 },
+    front: { x: 3, y: 2 },
+    bottom: { x: 2, y: 1 }
   }
 };

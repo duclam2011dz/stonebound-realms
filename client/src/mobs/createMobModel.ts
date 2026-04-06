@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { MobAtlasFaces, MobDefinition } from './mobDefinitions';
+import type { MobDefinition, MobSkinBoxLayout } from './mobDefinitions';
 
 export type MobRenderParts = {
   root: THREE.Group;
@@ -9,59 +9,152 @@ export type MobRenderParts = {
   material: THREE.MeshLambertMaterial;
 };
 
+type MobSkinFaceRect = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  flipX?: boolean;
+  flipY?: boolean;
+};
+
+type MobSkinFaces = {
+  textureWidth: number;
+  textureHeight: number;
+  right: MobSkinFaceRect;
+  left: MobSkinFaceRect;
+  top: MobSkinFaceRect;
+  bottom: MobSkinFaceRect;
+  front: MobSkinFaceRect;
+  back: MobSkinFaceRect;
+};
+
+function createSkinFaces(
+  layout: MobSkinBoxLayout,
+  textureWidth: number,
+  textureHeight: number
+): MobSkinFaces {
+  const { textureOffsetX, textureOffsetY, boxWidth, boxHeight, boxDepth } = layout;
+  return {
+    textureWidth,
+    textureHeight,
+    right: {
+      x: textureOffsetX + boxDepth + boxWidth,
+      y: textureOffsetY + boxDepth,
+      width: boxDepth,
+      height: boxHeight
+    },
+    left: {
+      x: textureOffsetX,
+      y: textureOffsetY + boxDepth,
+      width: boxDepth,
+      height: boxHeight
+    },
+    top: {
+      x: textureOffsetX + boxDepth,
+      y: textureOffsetY,
+      width: boxWidth,
+      height: boxDepth
+    },
+    bottom: {
+      x: textureOffsetX + boxDepth + boxWidth,
+      y: textureOffsetY,
+      width: boxWidth,
+      height: boxDepth
+    },
+    front: {
+      x: textureOffsetX + boxDepth,
+      y: textureOffsetY + boxDepth,
+      width: boxWidth,
+      height: boxHeight
+    },
+    back: {
+      x: textureOffsetX + boxDepth + boxWidth + boxDepth,
+      y: textureOffsetY + boxDepth,
+      width: boxWidth,
+      height: boxHeight
+    }
+  };
+}
+
 function applyBoxUVs(
   geometry: THREE.BoxGeometry,
-  faces: MobAtlasFaces,
-  columns: number,
-  rows: number
+  faces: MobSkinFaces
 ): void {
   const uvs = geometry.attributes.uv;
   if (!uvs) return;
-  const faceOrder: Array<keyof MobAtlasFaces> = ['right', 'left', 'top', 'bottom', 'front', 'back'];
+  const faceOrder: Array<keyof Omit<MobSkinFaces, 'textureWidth' | 'textureHeight'>> = [
+    'right',
+    'left',
+    'top',
+    'bottom',
+    'front',
+    'back'
+  ];
   for (let faceIndex = 0; faceIndex < faceOrder.length; faceIndex++) {
     const faceKey = faceOrder[faceIndex];
     if (!faceKey) continue;
-    const tile = faces[faceKey];
-    const u0 = tile.x / columns;
-    const u1 = (tile.x + 1) / columns;
-    const v0 = 1 - (tile.y + 1) / rows;
-    const v1 = 1 - tile.y / rows;
+    const face = faces[faceKey];
+    const u0 = face.x / faces.textureWidth;
+    const u1 = (face.x + face.width) / faces.textureWidth;
+    const v0 = 1 - (face.y + face.height) / faces.textureHeight;
+    const v1 = 1 - face.y / faces.textureHeight;
+    const leftU = face.flipX ? u1 : u0;
+    const rightU = face.flipX ? u0 : u1;
+    const topV = face.flipY ? v0 : v1;
+    const bottomV = face.flipY ? v1 : v0;
     const offset = faceIndex * 4;
-    uvs.setXY(offset + 0, u0, v1);
-    uvs.setXY(offset + 1, u1, v1);
-    uvs.setXY(offset + 2, u0, v0);
-    uvs.setXY(offset + 3, u1, v0);
+    uvs.setXY(offset + 0, leftU, topV);
+    uvs.setXY(offset + 1, rightU, topV);
+    uvs.setXY(offset + 2, leftU, bottomV);
+    uvs.setXY(offset + 3, rightU, bottomV);
   }
   uvs.needsUpdate = true;
 }
 
 function createPart(
   size: { width: number; height: number; length: number },
-  faces: MobAtlasFaces,
-  material: THREE.MeshLambertMaterial,
-  atlas: { columns: number; rows: number }
+  faces: MobSkinFaces,
+  material: THREE.MeshLambertMaterial
 ): THREE.Mesh {
   const geometry = new THREE.BoxGeometry(size.width, size.height, size.length);
-  applyBoxUVs(geometry, faces, atlas.columns, atlas.rows);
+  applyBoxUVs(geometry, faces);
   return new THREE.Mesh(geometry, material);
 }
 
 export function createMobModel(
   definition: MobDefinition,
-  material: THREE.MeshLambertMaterial,
-  atlas: { columns: number; rows: number }
+  material: THREE.MeshLambertMaterial
 ): MobRenderParts {
   const root = new THREE.Group();
 
   const mobMaterial = material.clone();
   mobMaterial.color.set(0xffffff);
+  mobMaterial.map = material.map ?? null;
+  mobMaterial.needsUpdate = true;
 
-  const body = createPart(definition.body, definition.atlas.body, mobMaterial, atlas);
-  const head = createPart(definition.head, definition.atlas.head, mobMaterial, atlas);
+  const headFaces = createSkinFaces(
+    definition.skin.head,
+    definition.skin.textureWidth,
+    definition.skin.textureHeight
+  );
+  const bodyFaces = createSkinFaces(
+    definition.skin.body,
+    definition.skin.textureWidth,
+    definition.skin.textureHeight
+  );
+  const legFaces = createSkinFaces(
+    definition.skin.leg,
+    definition.skin.textureWidth,
+    definition.skin.textureHeight
+  );
+
+  const body = createPart(definition.body, bodyFaces, mobMaterial);
+  const head = createPart(definition.head, headFaces, mobMaterial);
   const legSize = definition.leg.size;
   const legHeight = definition.leg.height;
   const legGeometry = new THREE.BoxGeometry(legSize, legHeight, legSize);
-  applyBoxUVs(legGeometry, definition.atlas.leg, atlas.columns, atlas.rows);
+  applyBoxUVs(legGeometry, legFaces);
   const legs = [
     new THREE.Mesh(legGeometry, mobMaterial),
     new THREE.Mesh(legGeometry, mobMaterial),

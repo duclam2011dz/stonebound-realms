@@ -16,15 +16,13 @@ export function drawBlockTiles(ctx: CanvasRenderingContext2D, tileSize: number):
   drawDirtTile(ctx, BLOCK_FACE_TILES.grass.bottom.x, BLOCK_FACE_TILES.grass.bottom.y, tileSize);
   drawDirtTile(ctx, BLOCK_FACE_TILES.dirt.all.x, BLOCK_FACE_TILES.dirt.all.y, tileSize);
   drawStoneTile(ctx, BLOCK_FACE_TILES.stone.all.x, BLOCK_FACE_TILES.stone.all.y, tileSize);
-  drawWoodTile(ctx, BLOCK_FACE_TILES.wood.all.x, BLOCK_FACE_TILES.wood.all.y, tileSize);
+  drawWoodTile(ctx, BLOCK_FACE_TILES.wood.side.x, BLOCK_FACE_TILES.wood.side.y, tileSize);
+  drawWoodTile(ctx, BLOCK_FACE_TILES.wood.top.x, BLOCK_FACE_TILES.wood.top.y, tileSize);
   drawLeafTile(ctx, BLOCK_FACE_TILES.leaf.all.x, BLOCK_FACE_TILES.leaf.all.y, tileSize);
   drawSandTile(ctx, BLOCK_FACE_TILES.sand.all.x, BLOCK_FACE_TILES.sand.all.y, tileSize);
   drawLampTile(ctx, BLOCK_FACE_TILES.lamp.all.x, BLOCK_FACE_TILES.lamp.all.y, tileSize);
   drawPlankTile(ctx, BLOCK_FACE_TILES.plank.all.x, BLOCK_FACE_TILES.plank.all.y, tileSize);
-  drawCraftingTableTile(
-    ctx,
-    BLOCK_FACE_TILES.crafting_table.all.x,
-    BLOCK_FACE_TILES.crafting_table.all.y,
-    tileSize
-  );
+  drawCraftingTableTile(ctx, BLOCK_FACE_TILES.crafting_table.top.x, BLOCK_FACE_TILES.crafting_table.top.y, tileSize);
+  drawCraftingTableTile(ctx, BLOCK_FACE_TILES.crafting_table.side.x, BLOCK_FACE_TILES.crafting_table.side.y, tileSize);
+  drawCraftingTableTile(ctx, BLOCK_FACE_TILES.crafting_table.front.x, BLOCK_FACE_TILES.crafting_table.front.y, tileSize);
 }

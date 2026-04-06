@@ -23,7 +23,6 @@ import {
   type MobDefinition,
   type MobType
 } from '../mobs/mobDefinitions';
-import { getProceduralMobAtlasAssets } from '../textures/proceduralMobAtlas';
 import { clamp, computeSunDirection } from './dayNight/dayNightMath';
 
 type SpawnOptions = {
@@ -50,8 +49,8 @@ export class MobSystem {
   settings: GameSettings;
   playerEntityId: number;
   spawnTimer: number;
-  material: THREE.MeshLambertMaterial;
-  atlas: { columns: number; rows: number };
+  materials: Record<MobType, THREE.MeshLambertMaterial>;
+  textureLoader: THREE.TextureLoader;
   tempVec: THREE.Vector3;
 
   constructor(options: {
@@ -69,16 +68,18 @@ export class MobSystem {
     this.settings = options.settings;
     this.playerEntityId = options.playerEntityId;
     this.spawnTimer = 0;
-
-    const atlasAssets = getProceduralMobAtlasAssets();
-    atlasAssets.texture.colorSpace = THREE.SRGBColorSpace;
-    atlasAssets.texture.needsUpdate = true;
-    atlasAssets.texture.magFilter = THREE.NearestFilter;
-    atlasAssets.texture.minFilter = THREE.NearestFilter;
-    atlasAssets.texture.generateMipmaps = false;
-    this.material = new THREE.MeshLambertMaterial({ map: atlasAssets.texture });
-    this.atlas = { columns: 4, rows: 4 };
+    this.materials = {
+      pig: new THREE.MeshLambertMaterial({ color: 0xd8adb0 }),
+      cow: new THREE.MeshLambertMaterial({ color: 0xb59a86 }),
+      chicken: new THREE.MeshLambertMaterial({ color: 0xe6dfc9 }),
+      sheep: new THREE.MeshLambertMaterial({ color: 0xd9d3c8 })
+    };
+    this.textureLoader = new THREE.TextureLoader();
     this.tempVec = new THREE.Vector3();
+
+    for (const type of MOB_TYPES) {
+      this.initializeMobMaterial(type);
+    }
   }
 
   update(dt: number): void {
@@ -136,9 +137,42 @@ export class MobSystem {
       scene: this.scene,
       definition,
       position,
-      material: this.material,
-      atlas: this.atlas
+      material: this.materials[type]
     });
+  }
+
+  initializeMobMaterial(type: MobType): void {
+    const definition = getMobDefinition(type);
+    this.textureLoader.load(
+      definition.skin.textureUrl,
+      (texture) => {
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.needsUpdate = true;
+        texture.magFilter = THREE.NearestFilter;
+        texture.minFilter = THREE.NearestFilter;
+        texture.generateMipmaps = false;
+        const material = this.materials[type];
+        material.map = texture;
+        material.color.set(0xffffff);
+        material.needsUpdate = true;
+        this.refreshMobMaterials(type, texture);
+      },
+      undefined,
+      (error: unknown) => {
+        console.error(`Failed to load mob texture for ${type}.`, error);
+      }
+    );
+  }
+
+  refreshMobMaterials(type: MobType, texture: THREE.Texture): void {
+    const mobEntities = this.ecs.getEntitiesWith([COMPONENT_MOB, COMPONENT_MOB_RENDER]);
+    for (const entityId of mobEntities) {
+      const mob = this.ecs.getComponent<MobComponent>(entityId, COMPONENT_MOB);
+      const render = this.ecs.getComponent<MobRenderComponent>(entityId, COMPONENT_MOB_RENDER);
+      if (!mob || !render || mob.type !== type) continue;
+      render.parts.material.map = texture;
+      render.parts.material.needsUpdate = true;
+    }
   }
 
   getMobCount(): number {

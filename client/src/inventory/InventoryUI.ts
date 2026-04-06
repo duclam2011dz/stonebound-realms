@@ -1,88 +1,10 @@
-import { BLOCK_ATLAS, BLOCK_FACE_TILES } from '../config/constants';
-import { getProceduralAtlasAssets } from '../textures/proceduralBlockAtlas';
+import { applySlotSwatch } from './applySlotSwatch';
 import { MAX_STACK_SIZE, type InventoryState } from './InventoryState';
-import { getFoodDefinition } from './foodDefinitions';
-import { getItemDefinition, getItemMaxStack } from './itemDefinitions';
+import { getItemMaxStack } from './itemDefinitions';
 import type { InventoryItem, InventorySlot } from './itemTypes';
-import { getItemKey, isBlockSlot, isFoodSlot, isItemSlot } from './itemTypes';
+import { getItemKey } from './itemTypes';
 import { getItemTooltipData } from './itemTooltip';
 import { getItemTooltipUI, type ItemTooltipUI } from '../ui/ItemTooltipUI';
-import type { BlockType } from '../world/services/BlockPalette';
-
-const FALLBACK_COLORS = {
-  grass: '#62b34e',
-  dirt: '#7b5438',
-  stone: '#8e8f98',
-  wood: '#7b5a39',
-  leaf: '#4f9f4e',
-  sand: '#d7c28a',
-  lamp: '#f3d16c',
-  plank: '#b8895f',
-  crafting_table: '#b07a4f'
-};
-
-type BlockTile = { x: number; y: number };
-
-function getIconTile(blockType: BlockType): BlockTile | null {
-  if (blockType === 'grass') return BLOCK_FACE_TILES.grass.top;
-  if (blockType === 'wood') return BLOCK_FACE_TILES.wood.all;
-  if (blockType === 'leaf') return BLOCK_FACE_TILES.leaf.all;
-  if (blockType === 'stone') return BLOCK_FACE_TILES.stone.all;
-  if (blockType === 'dirt') return BLOCK_FACE_TILES.dirt.all;
-  if (blockType === 'sand') return BLOCK_FACE_TILES.sand.all;
-  if (blockType === 'lamp') return BLOCK_FACE_TILES.lamp.all;
-  if (blockType === 'plank') return BLOCK_FACE_TILES.plank.all;
-  if (blockType === 'crafting_table') return BLOCK_FACE_TILES.crafting_table.all;
-  return null;
-}
-
-function applyAtlasSwatch(
-  element: HTMLElement,
-  slot: InventorySlot | null,
-  atlasUrl: string
-): void {
-  if (!slot) {
-    element.style.backgroundImage = '';
-    element.style.backgroundColor = 'transparent';
-    return;
-  }
-
-  if (isFoodSlot(slot)) {
-    const food = getFoodDefinition(slot.foodType);
-    element.style.backgroundImage = '';
-    element.style.backgroundColor = food.swatch;
-    return;
-  }
-
-  if (isItemSlot(slot)) {
-    const item = getItemDefinition(slot.itemType);
-    if (item.icon) {
-      element.style.backgroundImage = `url("${item.icon}")`;
-      element.style.backgroundSize = 'contain';
-      element.style.backgroundRepeat = 'no-repeat';
-      element.style.backgroundPosition = 'center';
-      element.style.backgroundColor = item.swatch;
-    } else {
-      element.style.backgroundImage = '';
-      element.style.backgroundColor = item.swatch;
-    }
-    return;
-  }
-
-  if (isBlockSlot(slot)) {
-    const tile = getIconTile(slot.blockType);
-    if (!tile) {
-      element.style.backgroundImage = '';
-      element.style.backgroundColor = FALLBACK_COLORS[slot.blockType] || '#ffffff';
-      return;
-    }
-
-    element.style.backgroundImage = `url(${atlasUrl})`;
-    element.style.backgroundSize = `${BLOCK_ATLAS.columns * 100}% ${BLOCK_ATLAS.rows * 100}%`;
-    element.style.backgroundPosition = `${(tile.x / (BLOCK_ATLAS.columns - 1)) * 100}% ${(tile.y / (BLOCK_ATLAS.rows - 1)) * 100}%`;
-    element.style.backgroundColor = 'transparent';
-  }
-}
 
 type InventoryUIOptions = {
   overlayElement: HTMLElement | null;
@@ -118,7 +40,6 @@ export class InventoryUI {
   craftingResultSwatch: HTMLElement | null;
   craftingResultCount: HTMLElement | null;
   craftingColumns: number;
-  proceduralAtlasImageUrl: string;
   boundCraftingStates: Set<InventoryState>;
   craftingResultBound: boolean;
   cursorDrag: CursorDragState | null;
@@ -150,7 +71,6 @@ export class InventoryUI {
     this.craftingResultSwatch = null;
     this.craftingResultCount = null;
     this.craftingColumns = 2;
-    this.proceduralAtlasImageUrl = getProceduralAtlasAssets().imageUrl;
     this.boundCraftingStates = new Set();
     this.craftingResultBound = false;
     this.cursorDrag = null;
@@ -329,7 +249,7 @@ export class InventoryUI {
 
   showDragGhost(item: InventorySlot, x: number, y: number): void {
     if (!this.dragGhost || !this.dragGhostSwatch || !this.dragGhostCount) return;
-    applyAtlasSwatch(this.dragGhostSwatch, item, this.proceduralAtlasImageUrl);
+    applySlotSwatch(this.dragGhostSwatch, item);
     this.dragGhostCount.textContent = item.quantity > 1 ? String(item.quantity) : '';
     this.dragGhost.classList.remove('is-hidden');
     this.updateDragGhostPosition(x, y);
@@ -347,7 +267,7 @@ export class InventoryUI {
 
   updateCursorGhost(): void {
     if (!this.cursorDrag || !this.dragGhostSwatch || !this.dragGhostCount) return;
-    applyAtlasSwatch(this.dragGhostSwatch, this.cursorDrag.item, this.proceduralAtlasImageUrl);
+    applySlotSwatch(this.dragGhostSwatch, this.cursorDrag.item);
     this.dragGhostCount.textContent =
       this.cursorDrag.item.quantity > 1 ? String(this.cursorDrag.item.quantity) : '';
   }
@@ -492,7 +412,7 @@ export class InventoryUI {
       const swatch = slotElement.querySelector<HTMLElement>('.inventory-swatch');
       const count = slotElement.querySelector<HTMLElement>('.inventory-count');
       if (!swatch) return;
-      applyAtlasSwatch(swatch, slotItem, this.proceduralAtlasImageUrl);
+      applySlotSwatch(swatch, slotItem);
       if (count) {
         const quantity = slotItem?.quantity ?? 0;
         count.textContent = quantity > 1 ? String(quantity) : '';
@@ -512,7 +432,7 @@ export class InventoryUI {
       const swatch = slotElement.querySelector<HTMLElement>('.inventory-swatch');
       const count = slotElement.querySelector<HTMLElement>('.inventory-count');
       if (!swatch) return;
-      applyAtlasSwatch(swatch, slotItem, this.proceduralAtlasImageUrl);
+      applySlotSwatch(swatch, slotItem);
       if (count) {
         const quantity = slotItem?.quantity ?? 0;
         count.textContent = quantity > 1 ? String(quantity) : '';
@@ -527,7 +447,7 @@ export class InventoryUI {
 
   updateCraftingResult(result: InventorySlot | null): void {
     if (!this.craftingResultSwatch || !this.craftingResultCount) return;
-    applyAtlasSwatch(this.craftingResultSwatch, result, this.proceduralAtlasImageUrl);
+    applySlotSwatch(this.craftingResultSwatch, result);
     const quantity = result?.quantity ?? 0;
     this.craftingResultCount.textContent = quantity > 1 ? String(quantity) : '';
     this.craftingResultElement?.classList.toggle('is-empty', !result);

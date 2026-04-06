@@ -488,3 +488,32 @@ Update 2026-04-05 (settings scroll/layout polish + default help-off):
   - Artifacts:
     - `output/pause-settings-ui/metrics.json`
     - `output/pause-settings-ui/pause-settings.png`
+
+Update 2026-04-06 (PNG block, mob, and item textures):
+
+- Asset pipeline:
+  - Added real PNG texture loading from `client/assets/` via `client/src/textures/atlas/createImageAtlas.ts`.
+  - Replaced the procedural block atlas bootstrap with `client/src/textures/block/blockAtlas.ts`, which packs the imported PNG tiles into a runtime atlas texture.
+  - Added `client/src/textures/block/blockTextureRegistry.ts` to centralize block face texture sources and inventory/hotbar icon fallbacks.
+- Block rendering:
+  - Updated `client/src/config/constants.ts` and `client/src/world/services/meshing/createGreedyChunkGeometry.ts` so logs and crafting tables now use face-specific PNG textures (`top`, `side`, `front`, `bottom`) instead of single-tile placeholders.
+  - `client/src/world/VoxelWorld.ts` now swaps in the PNG-backed atlas material asynchronously and rebuilds visible chunks once the texture is ready.
+- Mob rendering:
+  - Reworked `client/src/mobs/mobDefinitions.ts` to use per-mob skin metadata with imported PNG sheets instead of the procedural mob atlas rows.
+  - Rebuilt `client/src/mobs/createMobModel.ts` UV generation so cube parts read from the correct regions of the original mob skin PNGs.
+  - `client/src/systems/MobSystem.ts` now loads individual mob textures at runtime and refreshes existing render materials once the images are available.
+  - Default biome skin selection is now the `temperate` variant for cow, pig, and chicken; sheep uses the provided base sheep texture.
+- Item/inventory visuals:
+  - Swapped procedural tool icons for PNG assets in `client/src/inventory/itemDefinitions.ts`.
+  - Added `client/src/inventory/applySlotSwatch.ts` and updated both `InventoryUI` and `Hotbar` so block/item slots render with PNG icons wherever an asset exists.
+- Validation:
+  - `npm run typecheck`: pass.
+  - `npm run lint`: pass.
+  - Added `tools/test_png_texture_assets.mjs` to validate that:
+    - the block atlas is built from PNG sources
+    - mob materials receive their PNG maps
+    - hotbar and inventory slots reference the expected PNG icon URLs
+  - Artifact output:
+    - `output/png-texture-assets/metrics.json`
+    - `output/png-texture-assets/world-textures.png`
+    - `output/png-texture-assets/inventory-textures.png`

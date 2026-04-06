@@ -45,14 +45,21 @@ function getFaceTile(blockId: number, axis: number, sign: number): BlockTile {
     if (axis === 1 && sign < 0) return BLOCK_FACE_TILES.grass.bottom;
     return BLOCK_FACE_TILES.grass.side;
   }
-  if (blockId === BLOCK_ID_WOOD) return BLOCK_FACE_TILES.wood.all;
+  if (blockId === BLOCK_ID_WOOD) {
+    return axis === 1 ? BLOCK_FACE_TILES.wood.top : BLOCK_FACE_TILES.wood.side;
+  }
   if (blockId === BLOCK_ID_LEAF) return BLOCK_FACE_TILES.leaf.all;
   if (blockId === BLOCK_ID_SAND) return BLOCK_FACE_TILES.sand.all;
   if (blockId === BLOCK_ID_STONE) return BLOCK_FACE_TILES.stone.all;
   if (blockId === BLOCK_ID_DIRT) return BLOCK_FACE_TILES.dirt.all;
   if (blockId === BLOCK_ID_LAMP) return BLOCK_FACE_TILES.lamp.all;
   if (blockId === BLOCK_ID_PLANK) return BLOCK_FACE_TILES.plank.all;
-  if (blockId === BLOCK_ID_CRAFTING_TABLE) return BLOCK_FACE_TILES.crafting_table.all;
+  if (blockId === BLOCK_ID_CRAFTING_TABLE) {
+    if (axis === 1 && sign > 0) return BLOCK_FACE_TILES.crafting_table.top;
+    if (axis === 1 && sign < 0) return BLOCK_FACE_TILES.crafting_table.bottom;
+    if (axis === 2 && sign > 0) return BLOCK_FACE_TILES.crafting_table.front;
+    return BLOCK_FACE_TILES.crafting_table.side;
+  }
   return BLOCK_FACE_TILES.dirt.all;
 }
 

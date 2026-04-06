@@ -7,7 +7,7 @@ import {
   WORLD_MAX_HEIGHT,
   type GameSettings
 } from '../config/constants';
-import { getProceduralAtlasAssets } from '../textures/proceduralBlockAtlas';
+import { loadBlockAtlasAssets } from '../textures/block/blockAtlas';
 import { createVoxelMaterial } from '../core/render/lighting/createVoxelMaterial';
 import { TerrainGenerator } from './services/TerrainGenerator';
 import { VoxelChunkMesher } from './services/VoxelChunkMesher';
@@ -139,11 +139,16 @@ export class VoxelWorld {
   }
 
   initializeBlockAtlas(): void {
-    const atlasAssets = getProceduralAtlasAssets();
-    this.blockMaterial.dispose();
-    this.blockMaterial = createVoxelMaterial(atlasAssets.texture);
-    this.applyBlockMaterialViewMode();
-    this.rebuildAllVisibleChunks();
+    void loadBlockAtlasAssets()
+      .then((atlasAssets) => {
+        this.blockMaterial.dispose();
+        this.blockMaterial = createVoxelMaterial(atlasAssets.texture);
+        this.applyBlockMaterialViewMode();
+        this.rebuildAllVisibleChunks();
+      })
+      .catch((error: unknown) => {
+        console.error('Failed to initialize block atlas from PNG assets.', error);
+      });
   }
 
   applyBlockMaterialViewMode(): void {

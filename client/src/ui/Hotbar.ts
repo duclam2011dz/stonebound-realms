@@ -1,48 +1,16 @@
-import { BLOCK_ATLAS, BLOCK_FACE_TILES } from '../config/constants';
-import { getProceduralAtlasAssets } from '../textures/proceduralBlockAtlas';
+import { applySlotSwatch } from '../inventory/applySlotSwatch';
 import type { InventoryState } from '../inventory/InventoryState';
-import { getFoodDefinition } from '../inventory/foodDefinitions';
-import { getItemDefinition } from '../inventory/itemDefinitions';
 import type { InventorySlot } from '../inventory/itemTypes';
-import { isBlockSlot, isFoodSlot, isItemSlot } from '../inventory/itemTypes';
+import { isBlockSlot } from '../inventory/itemTypes';
 import { getItemTooltipData } from '../inventory/itemTooltip';
 import { getItemTooltipUI, type ItemTooltipUI } from './ItemTooltipUI';
 import type { BlockType } from '../world/services/BlockPalette';
-
-const FALLBACK_COLORS = {
-  grass: '#62b34e',
-  dirt: '#7b5438',
-  stone: '#8e8f98',
-  wood: '#7b5a39',
-  leaf: '#4f9f4e',
-  sand: '#d7c28a',
-  lamp: '#f3d16c',
-  plank: '#b8895f',
-  crafting_table: '#b07a4f'
-};
-
-type BlockTile = { x: number; y: number };
-
-function getIconTile(blockType: BlockType | null): BlockTile | null {
-  if (!blockType) return null;
-  if (blockType === 'grass') return BLOCK_FACE_TILES.grass.top;
-  if (blockType === 'wood') return BLOCK_FACE_TILES.wood.all;
-  if (blockType === 'leaf') return BLOCK_FACE_TILES.leaf.all;
-  if (blockType === 'stone') return BLOCK_FACE_TILES.stone.all;
-  if (blockType === 'dirt') return BLOCK_FACE_TILES.dirt.all;
-  if (blockType === 'sand') return BLOCK_FACE_TILES.sand.all;
-  if (blockType === 'lamp') return BLOCK_FACE_TILES.lamp.all;
-  if (blockType === 'plank') return BLOCK_FACE_TILES.plank.all;
-  if (blockType === 'crafting_table') return BLOCK_FACE_TILES.crafting_table.all;
-  return null;
-}
 
 export class Hotbar {
   rootElement: HTMLElement | null;
   inventoryState: InventoryState;
   selectedIndex: number;
   slotElements: HTMLElement[];
-  proceduralAtlasImageUrl: string;
   tooltip: ItemTooltipUI;
 
   constructor(rootElement: HTMLElement | null, inventoryState: InventoryState) {
@@ -50,7 +18,6 @@ export class Hotbar {
     this.inventoryState = inventoryState;
     this.selectedIndex = 0;
     this.slotElements = [];
-    this.proceduralAtlasImageUrl = getProceduralAtlasAssets().imageUrl;
     this.tooltip = getItemTooltipUI();
 
     this.render();
@@ -105,50 +72,6 @@ export class Hotbar {
     });
   }
 
-  applyAtlasSwatch(swatchElement: HTMLElement, slot: InventorySlot | null): void {
-    if (!slot) {
-      swatchElement.style.backgroundImage = '';
-      swatchElement.style.backgroundColor = 'transparent';
-      return;
-    }
-
-    if (isFoodSlot(slot)) {
-      const food = getFoodDefinition(slot.foodType);
-      swatchElement.style.backgroundImage = '';
-      swatchElement.style.backgroundColor = food.swatch;
-      return;
-    }
-
-    if (isItemSlot(slot)) {
-      const item = getItemDefinition(slot.itemType);
-      if (item.icon) {
-        swatchElement.style.backgroundImage = `url("${item.icon}")`;
-        swatchElement.style.backgroundSize = 'contain';
-        swatchElement.style.backgroundRepeat = 'no-repeat';
-        swatchElement.style.backgroundPosition = 'center';
-        swatchElement.style.backgroundColor = item.swatch;
-      } else {
-        swatchElement.style.backgroundImage = '';
-        swatchElement.style.backgroundColor = item.swatch;
-      }
-      return;
-    }
-
-    if (isBlockSlot(slot)) {
-      const tile = getIconTile(slot.blockType);
-      if (!tile) {
-        swatchElement.style.backgroundImage = '';
-        swatchElement.style.backgroundColor = FALLBACK_COLORS[slot.blockType] || '#ffffff';
-        return;
-      }
-
-      swatchElement.style.backgroundImage = `url(${this.proceduralAtlasImageUrl})`;
-      swatchElement.style.backgroundSize = `${BLOCK_ATLAS.columns * 100}% ${BLOCK_ATLAS.rows * 100}%`;
-      swatchElement.style.backgroundPosition = `${(tile.x / (BLOCK_ATLAS.columns - 1)) * 100}% ${(tile.y / (BLOCK_ATLAS.rows - 1)) * 100}%`;
-      swatchElement.style.backgroundColor = 'transparent';
-    }
-  }
-
   refreshSlots(): void {
     for (let index = 0; index < 9; index++) {
       const slotElement = this.slotElements[index];
@@ -157,7 +80,7 @@ export class Hotbar {
       const swatch = slotElement.querySelector<HTMLElement>('.hotbar-swatch');
       const count = slotElement.querySelector<HTMLElement>('.hotbar-count');
       if (!swatch) continue;
-      this.applyAtlasSwatch(swatch, slotData);
+      applySlotSwatch(swatch, slotData);
       if (count) {
         const quantity = slotData?.quantity ?? 0;
         count.textContent = quantity > 1 ? String(quantity) : '';

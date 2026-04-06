@@ -1,6 +1,27 @@
 export type MobType = 'pig' | 'cow' | 'chicken' | 'sheep';
 
 import type { FoodType } from '../inventory/foodDefinitions';
+import temperatePigUrl from '../../assets/mobs/pig/temperate_pig.png';
+import temperateCowUrl from '../../assets/mobs/cow/temperate_cow.png';
+import temperateChickenUrl from '../../assets/mobs/chicken/temperate_chicken.png';
+import sheepUrl from '../../assets/mobs/sheep/sheep.png';
+
+export type MobSkinBoxLayout = {
+  textureOffsetX: number;
+  textureOffsetY: number;
+  boxWidth: number;
+  boxHeight: number;
+  boxDepth: number;
+};
+
+export type MobSkinDefinition = {
+  textureUrl: string;
+  textureWidth: number;
+  textureHeight: number;
+  head: MobSkinBoxLayout;
+  body: MobSkinBoxLayout;
+  leg: MobSkinBoxLayout;
+};
 
 export type MobDefinition = {
   type: MobType;
@@ -11,55 +32,11 @@ export type MobDefinition = {
   maxHealth: number;
   groupSize: { min: number; max: number };
   drops: { food: FoodType; amount: number };
-  atlas: MobAtlas;
+  skin: MobSkinDefinition;
   body: { width: number; height: number; length: number };
   head: { width: number; height: number; length: number };
   leg: { size: number; height: number };
 };
-
-export type MobAtlasTile = { x: number; y: number };
-
-export type MobAtlasFaces = {
-  right: MobAtlasTile;
-  left: MobAtlasTile;
-  top: MobAtlasTile;
-  bottom: MobAtlasTile;
-  front: MobAtlasTile;
-  back: MobAtlasTile;
-};
-
-export type MobAtlas = {
-  head: MobAtlasFaces;
-  body: MobAtlasFaces;
-  leg: MobAtlasFaces;
-};
-
-const createMobAtlasRow = (row: number): MobAtlas => ({
-  head: {
-    front: { x: 0, y: row },
-    back: { x: 1, y: row },
-    left: { x: 1, y: row },
-    right: { x: 1, y: row },
-    top: { x: 1, y: row },
-    bottom: { x: 1, y: row }
-  },
-  body: {
-    front: { x: 2, y: row },
-    back: { x: 2, y: row },
-    left: { x: 2, y: row },
-    right: { x: 2, y: row },
-    top: { x: 3, y: row },
-    bottom: { x: 3, y: row }
-  },
-  leg: {
-    front: { x: 4, y: row },
-    back: { x: 4, y: row },
-    left: { x: 4, y: row },
-    right: { x: 4, y: row },
-    top: { x: 5, y: row },
-    bottom: { x: 5, y: row }
-  }
-});
 
 const MOB_DEFINITIONS: Record<MobType, MobDefinition> = {
   pig: {
@@ -71,7 +48,20 @@ const MOB_DEFINITIONS: Record<MobType, MobDefinition> = {
     maxHealth: 6,
     groupSize: { min: 1, max: 4 },
     drops: { food: 'pork', amount: 1 },
-    atlas: createMobAtlasRow(0),
+    skin: {
+      textureUrl: temperatePigUrl,
+      textureWidth: 64,
+      textureHeight: 64,
+      head: { textureOffsetX: 0, textureOffsetY: 0, boxWidth: 8, boxHeight: 8, boxDepth: 8 },
+      body: {
+        textureOffsetX: 28,
+        textureOffsetY: 8,
+        boxWidth: 10,
+        boxHeight: 16,
+        boxDepth: 8
+      },
+      leg: { textureOffsetX: 0, textureOffsetY: 16, boxWidth: 4, boxHeight: 6, boxDepth: 4 }
+    },
     body: { width: 0.9, height: 0.6, length: 1.2 },
     head: { width: 0.55, height: 0.55, length: 0.55 },
     leg: { size: 0.22, height: 0.5 }
@@ -85,7 +75,20 @@ const MOB_DEFINITIONS: Record<MobType, MobDefinition> = {
     maxHealth: 10,
     groupSize: { min: 1, max: 4 },
     drops: { food: 'beef', amount: 1 },
-    atlas: createMobAtlasRow(1),
+    skin: {
+      textureUrl: temperateCowUrl,
+      textureWidth: 64,
+      textureHeight: 64,
+      head: { textureOffsetX: 0, textureOffsetY: 0, boxWidth: 8, boxHeight: 8, boxDepth: 6 },
+      body: {
+        textureOffsetX: 18,
+        textureOffsetY: 4,
+        boxWidth: 12,
+        boxHeight: 18,
+        boxDepth: 10
+      },
+      leg: { textureOffsetX: 0, textureOffsetY: 16, boxWidth: 4, boxHeight: 12, boxDepth: 4 }
+    },
     body: { width: 1.0, height: 0.7, length: 1.4 },
     head: { width: 0.6, height: 0.6, length: 0.6 },
     leg: { size: 0.24, height: 0.55 }
@@ -99,7 +102,20 @@ const MOB_DEFINITIONS: Record<MobType, MobDefinition> = {
     maxHealth: 8,
     groupSize: { min: 2, max: 4 },
     drops: { food: 'mutton', amount: 1 },
-    atlas: createMobAtlasRow(2),
+    skin: {
+      textureUrl: sheepUrl,
+      textureWidth: 64,
+      textureHeight: 32,
+      head: { textureOffsetX: 0, textureOffsetY: 0, boxWidth: 6, boxHeight: 6, boxDepth: 8 },
+      body: {
+        textureOffsetX: 28,
+        textureOffsetY: 8,
+        boxWidth: 8,
+        boxHeight: 16,
+        boxDepth: 6
+      },
+      leg: { textureOffsetX: 0, textureOffsetY: 16, boxWidth: 4, boxHeight: 6, boxDepth: 4 }
+    },
     body: { width: 0.95, height: 0.7, length: 1.2 },
     head: { width: 0.55, height: 0.55, length: 0.55 },
     leg: { size: 0.22, height: 0.52 }
@@ -113,7 +129,14 @@ const MOB_DEFINITIONS: Record<MobType, MobDefinition> = {
     maxHealth: 4,
     groupSize: { min: 4, max: 4 },
     drops: { food: 'chicken', amount: 1 },
-    atlas: createMobAtlasRow(3),
+    skin: {
+      textureUrl: temperateChickenUrl,
+      textureWidth: 64,
+      textureHeight: 32,
+      head: { textureOffsetX: 0, textureOffsetY: 0, boxWidth: 4, boxHeight: 6, boxDepth: 3 },
+      body: { textureOffsetX: 0, textureOffsetY: 9, boxWidth: 6, boxHeight: 8, boxDepth: 6 },
+      leg: { textureOffsetX: 26, textureOffsetY: 0, boxWidth: 3, boxHeight: 5, boxDepth: 3 }
+    },
     body: { width: 0.6, height: 0.45, length: 0.7 },
     head: { width: 0.4, height: 0.4, length: 0.4 },
     leg: { size: 0.16, height: 0.38 }
