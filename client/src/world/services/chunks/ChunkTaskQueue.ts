@@ -49,9 +49,11 @@ export class ChunkTaskQueue {
 
 export type ChunkTask = {
   key: string;
+  chunkKey: string;
   cx: number;
   cz: number;
   priority: number;
   forceMesh: boolean;
   desiredEpoch: number;
+  phase: 'generate' | 'mesh';
 };

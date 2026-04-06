@@ -570,3 +570,48 @@ Update 2026-04-06 (mob UV/front-facing correction pass):
     - per-role walk pose rotations
     - sheep wool/base leg sync
     - movement-facing alignment (`orientationMetrics`, expected dot product >= `0.98`)
+
+Update 2026-04-06 (mob cutout + chunk perf optimization pass):
+
+- Remaining mob polish:
+  - Switched mob materials to cutout rendering (`alphaTest`) so transparent pixels in the PNG skins no longer show up as the thick black fill that was still visible around chicken legs.
+  - Re-verified the cow head setup with the dedicated muzzle cube still present in the vanilla-style definition, then refreshed the visual smoke test with front-facing close-up captures for chicken and cow.
+- Chunk/world performance findings:
+  - Profiled the live game at `Render Distance 12` / `LOD Start Ring 4` in Playwright and confirmed block PNG loading is not the recurring chunk-load bottleneck because block textures are already packed into a single atlas at startup.
+  - The main runtime hotspots were `TerrainGenerator.generateChunk` and `VoxelChunkMesher.createChunkGeometry`, with `processChunkQueue` spikes coming from doing expensive generation/meshing work synchronously on chunk load.
+- Performance changes:
+  - `client/src/world/services/meshing/createGreedyChunkGeometry.ts` now keeps greedy quads merged and repeats block tiles in the shader instead of splitting every merged face back into `width * height` sub-quads.
+  - `client/src/core/render/lighting/createVoxelMaterial.ts` now samples per-face atlas bounds through a `tilemap` vertex attribute so merged quads still preserve tiled block textures and lighting.
+  - `client/src/world/services/TerrainGenerator.ts` now fills the base solid chunk data directly instead of repeatedly routing every voxel through `setChunkLocalBlockId`.
+  - `client/src/world/VoxelWorld.ts` now swaps existing chunk meshes onto the real atlas material as soon as the atlas is ready, instead of forcing a second full visible-chunk rebuild.
+- Profiling delta from the live browser benchmark:
+  - Initial RD12 load: `3745ms -> 2587ms`
+  - Travel/new-area load: `2736ms -> 2432ms`
+  - Worst `processChunkQueue` spike in the benchmark: `97.5ms -> 33.5ms`
+  - `generateChunk` total in the benchmark: `2209ms -> 1539ms`
+  - `createChunkGeometry` total in the benchmark: `1405ms -> 960ms`
+- Verification:
+  - `npm run typecheck`
+  - `npm run lint`
+  - `tools/test_png_texture_assets.mjs`
+  - Visual inspection of:
+    - `output/png-texture-assets/mob-textures.png`
+    - `output/png-texture-assets/chicken-closeup.png`
+    - `output/png-texture-assets/cow-closeup.png`
+
+Update 2026-04-06 (block shader regression + phased chunk queue):
+
+- Block rendering regression fix:
+  - Reproduced the "invisible blocks" issue in the live browser and traced it to a real shader compile failure in `client/src/core/render/lighting/createVoxelMaterial.ts`.
+  - The custom atlas shader was still calling `mapTexelToLinear`, which is not available in the current Three.js shader chunk for this material path, so the block material program never compiled and the world rendered as missing/outlined blocks only.
+  - Replaced that decode path with the current-compatible `DECODE_VIDEO_TEXTURE` branch and kept the tilemap atlas sampling logic intact.
+- Chunk streaming spike reduction:
+  - Split queued chunk work into explicit `generate` and `mesh` phases in `client/src/world/services/chunks/ChunkTaskQueue.ts` and `client/src/world/VoxelWorld.ts`.
+  - Visible chunk planning now enqueues generation first for unloaded chunks, then schedules meshing as a follow-up task instead of doing both synchronously inside one queue item.
+  - Rebuild paths for block edits now queue mesh-only refresh tasks for already loaded neighbors.
+- Verification:
+  - `npm run typecheck`
+  - `npm run lint`
+  - `node tools/test_png_texture_assets.mjs`
+  - Live Playwright screenshot after the shader fix:
+    - `output/quickcheck/live-world-after-fix.png`

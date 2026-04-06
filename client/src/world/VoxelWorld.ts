@@ -83,6 +83,8 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
+type ChunkTaskPhase = 'generate' | 'mesh';
+
 export class VoxelWorld {
   scene: THREE.Scene;
   settings: GameSettings;
@@ -141,10 +143,13 @@ export class VoxelWorld {
   initializeBlockAtlas(): void {
     void loadBlockAtlasAssets()
       .then((atlasAssets) => {
-        this.blockMaterial.dispose();
+        const previousMaterial = this.blockMaterial;
         this.blockMaterial = createVoxelMaterial(atlasAssets.texture);
         this.applyBlockMaterialViewMode();
-        this.rebuildAllVisibleChunks();
+        for (const mesh of this.chunkMeshes.values()) {
+          mesh.material = this.blockMaterial;
+        }
+        previousMaterial.dispose();
       })
       .catch((error: unknown) => {
         console.error('Failed to initialize block atlas from PNG assets.', error);
@@ -188,7 +193,7 @@ export class VoxelWorld {
   rebuildAllVisibleChunks(): void {
     for (const cKey of this.storage.loadedChunks) {
       const { cx, cz } = this.storage.parseChunkKey(cKey);
-      this.enqueueChunkTask(cx, cz, 0, true);
+      this.enqueueChunkMeshTask(cx, cz, 0, true);
     }
   }
 
@@ -326,16 +331,37 @@ export class VoxelWorld {
     this.chunkLodSteps.set(cKey, lodStep);
   }
 
-  enqueueChunkTask(cx: number, cz: number, priority = 0, forceMesh = false): void {
-    const key = this.storage.chunkKey(cx, cz);
-    this.chunkTaskQueue.enqueue(key, {
-      key,
+  buildChunkTaskKey(chunkKey: string, phase: ChunkTaskPhase): string {
+    return `${chunkKey}:${phase}`;
+  }
+
+  enqueueChunkTask(
+    cx: number,
+    cz: number,
+    phase: ChunkTaskPhase,
+    priority = 0,
+    forceMesh = false
+  ): void {
+    const chunkKey = this.storage.chunkKey(cx, cz);
+    const taskKey = this.buildChunkTaskKey(chunkKey, phase);
+    this.chunkTaskQueue.enqueue(taskKey, {
+      key: taskKey,
+      chunkKey,
       cx,
       cz,
       priority,
       forceMesh,
-      desiredEpoch: this.visibleEpoch
+      desiredEpoch: this.visibleEpoch,
+      phase
     });
+  }
+
+  enqueueChunkGenerateTask(cx: number, cz: number, priority = 0, forceMesh = false): void {
+    this.enqueueChunkTask(cx, cz, 'generate', priority, forceMesh);
+  }
+
+  enqueueChunkMeshTask(cx: number, cz: number, priority = 0, forceMesh = false): void {
+    this.enqueueChunkTask(cx, cz, 'mesh', priority, forceMesh);
   }
 
   processChunkQueue(maxTasks = 2, timeBudgetMs = 5): number {
@@ -346,20 +372,32 @@ export class VoxelWorld {
       if (performance.now() - start > timeBudgetMs) break;
       const task = this.chunkTaskQueue.pop();
       if (!task) break;
-      const { cx, cz, key, forceMesh } = task;
+      const { cx, cz, chunkKey, forceMesh, phase } = task;
 
-      if (this.desiredChunks.size > 0 && !this.desiredChunks.has(key)) {
+      if (this.desiredChunks.size > 0 && !this.desiredChunks.has(chunkKey)) {
         if (this.storage.isChunkLoaded(cx, cz)) this.unloadChunk(cx, cz);
         continue;
       }
 
+      if (phase === 'generate') {
+        if (!this.storage.isChunkLoaded(cx, cz)) {
+          this.generateChunk(cx, cz);
+        }
+        if (this.storage.isChunkLoaded(cx, cz)) {
+          this.enqueueChunkMeshTask(cx, cz, task.priority, forceMesh);
+        }
+        processed += 1;
+        continue;
+      }
+
       if (!this.storage.isChunkLoaded(cx, cz)) {
-        this.generateChunk(cx, cz);
+        this.enqueueChunkGenerateTask(cx, cz, task.priority, forceMesh);
+        continue;
       }
 
       const expectedLod = this.getChunkLodStep(cx, cz);
-      const currentLod = this.chunkLodSteps.get(key);
-      if (forceMesh || currentLod !== expectedLod || !this.chunkMeshes.has(key)) {
+      const currentLod = this.chunkLodSteps.get(chunkKey);
+      if (forceMesh || currentLod !== expectedLod || !this.chunkMeshes.has(chunkKey)) {
         this.buildChunkMesh(cx, cz);
       }
       processed += 1;
@@ -379,11 +417,11 @@ export class VoxelWorld {
   rebuildChunksAroundBlock(x: number, z: number): void {
     const cx = this.storage.floorDiv(x, this.chunkSize);
     const cz = this.storage.floorDiv(z, this.chunkSize);
-    this.enqueueChunkTask(cx, cz, 0, true);
-    this.enqueueChunkTask(cx + 1, cz, 0, true);
-    this.enqueueChunkTask(cx - 1, cz, 0, true);
-    this.enqueueChunkTask(cx, cz + 1, 0, true);
-    this.enqueueChunkTask(cx, cz - 1, 0, true);
+    this.enqueueChunkMeshTask(cx, cz, 0, true);
+    this.enqueueChunkMeshTask(cx + 1, cz, 0, true);
+    this.enqueueChunkMeshTask(cx - 1, cz, 0, true);
+    this.enqueueChunkMeshTask(cx, cz + 1, 0, true);
+    this.enqueueChunkMeshTask(cx, cz - 1, 0, true);
   }
 
   updateVisibleChunksAround(position: THREE.Vector3, force = false): void {
@@ -407,8 +445,12 @@ export class VoxelWorld {
       const loaded = this.storage.isChunkLoaded(entry.cx, entry.cz);
       const currentLod = this.chunkLodSteps.get(entry.key);
       const expectedLod = this.getChunkLodStep(entry.cx, entry.cz);
-      if (!loaded || force || expectedLod !== currentLod) {
-        this.enqueueChunkTask(entry.cx, entry.cz, entry.ringDistance, force);
+      if (!loaded) {
+        this.enqueueChunkGenerateTask(entry.cx, entry.cz, entry.ringDistance, force);
+        continue;
+      }
+      if (force || expectedLod !== currentLod || !this.chunkMeshes.has(entry.key)) {
+        this.enqueueChunkMeshTask(entry.cx, entry.cz, entry.ringDistance, force);
       }
     }
 

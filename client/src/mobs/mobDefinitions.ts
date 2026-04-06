@@ -282,6 +282,17 @@ const MOB_DEFINITIONS: Record<MobType, MobDefinition> = {
               originX: 4,
               originY: -5,
               originZ: -4
+            },
+            {
+              textureLayer: 'base',
+              textureOffsetX: 1,
+              textureOffsetY: 33,
+              boxWidth: 6,
+              boxHeight: 3,
+              boxDepth: 1,
+              originX: -3,
+              originY: 1,
+              originZ: -7
             }
           ]
         },

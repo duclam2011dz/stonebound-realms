@@ -65,16 +65,19 @@ export class TerrainGenerator {
     const baseZ = cz * this.chunkSize;
     const biomeMap = this.biomeModel.buildBiomeMap(baseX, baseZ, this.chunkSize);
     const heightMap = this.heightModel.buildHeightMap(baseX, baseZ, this.chunkSize);
-    storage.ensureChunkData(cx, cz);
+    const chunkData = storage.ensureChunkData(cx, cz);
+    const yStride = this.chunkSize;
+    const zStride = this.chunkSize * this.maxHeight;
 
     for (let lz = 0; lz < this.chunkSize; lz++) {
       for (let lx = 0; lx < this.chunkSize; lx++) {
         const columnIndex = lx + lz * this.chunkSize;
         const topY = heightMap[columnIndex] ?? 0;
-        const biomeId = biomeMap[columnIndex] ?? this.biomeModel.getBiomeId(baseX + lx, baseZ + lz);
+        const biomeId = biomeMap[columnIndex] ?? 0;
+        const columnBase = lx + lz * zStride;
 
         for (let y = 0; y <= topY; y++) {
-          storage.setChunkLocalBlockId(cx, cz, lx, y, lz, this.getBlockId(y, topY, biomeId));
+          chunkData[columnBase + y * yStride] = this.getBlockId(y, topY, biomeId);
         }
       }
     }
@@ -87,7 +90,7 @@ export class TerrainGenerator {
         const topY = heightMap[columnIndex] ?? 0;
         const worldX = baseX + lx;
         const worldZ = baseZ + lz;
-        const biomeId = biomeMap[columnIndex] ?? this.biomeModel.getBiomeId(worldX, worldZ);
+        const biomeId = biomeMap[columnIndex] ?? 0;
         const slope = calculateColumnSlope(
           heightMap,
           this.chunkSize,

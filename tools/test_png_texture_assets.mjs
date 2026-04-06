@@ -12,6 +12,13 @@ const browser = await chromium.launch({
 const page = await browser.newPage({
   viewport: { width: 1600, height: 960 }
 });
+const consoleErrors = [];
+
+page.on('console', (message) => {
+  if (message.type() === 'error' || message.type() === 'warning') {
+    consoleErrors.push(message.text());
+  }
+});
 
 await page.goto('http://127.0.0.1:4173/pages/game.html', { waitUntil: 'domcontentloaded' });
 await page.waitForTimeout(1600);
@@ -194,6 +201,34 @@ await page.screenshot({
   omitBackground: false
 });
 
+await page.evaluate((origin) => {
+  const game = window.__game;
+  if (!game) return;
+  const camera = game.renderContext.camera;
+  camera.position.set(origin.x + 1.55, origin.y + 1.75, origin.z - 13.4);
+  camera.lookAt(origin.x + 1.5, origin.y + 1.05, origin.z - 10.25);
+  game.renderContext.render();
+}, setupMetrics.showcaseOrigin);
+await page.waitForTimeout(100);
+await page.screenshot({
+  path: path.join(outDir, 'chicken-closeup.png'),
+  omitBackground: false
+});
+
+await page.evaluate((origin) => {
+  const game = window.__game;
+  if (!game) return;
+  const camera = game.renderContext.camera;
+  camera.position.set(origin.x - 1.55, origin.y + 2.1, origin.z - 14.8);
+  camera.lookAt(origin.x - 1.5, origin.y + 1.15, origin.z - 10.25);
+  game.renderContext.render();
+}, setupMetrics.showcaseOrigin);
+await page.waitForTimeout(100);
+await page.screenshot({
+  path: path.join(outDir, 'cow-closeup.png'),
+  omitBackground: false
+});
+
 const walkPoseMetrics = await page.evaluate((spawned) => {
   const game = window.__game;
   if (!game) return null;
@@ -311,12 +346,23 @@ if (inventoryBackgrounds.some((value) => !value || value === 'none')) {
   );
 }
 
+const shaderErrors = consoleErrors.filter(
+  (message) =>
+    message.includes('THREE.WebGLProgram') ||
+    message.includes('program not valid') ||
+    message.includes('Shader Error')
+);
+if (shaderErrors.length > 0) {
+  throw new Error(`Unexpected WebGL shader errors detected: ${shaderErrors.join(' | ')}`);
+}
+
 const metrics = {
   ...setupMetrics,
   walkPoseMetrics,
   orientationMetrics,
   hotbarBackgrounds,
-  inventoryBackgrounds
+  inventoryBackgrounds,
+  consoleErrors
 };
 
 fs.writeFileSync(path.join(outDir, 'metrics.json'), JSON.stringify(metrics, null, 2));

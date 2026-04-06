@@ -41,6 +41,14 @@ const REPATH_MAX_SECONDS = 4;
 const WANDER_MIN_SECONDS = 2.5;
 const WANDER_MAX_SECONDS = 5.5;
 
+function createCutoutMobMaterial(color: number): THREE.MeshLambertMaterial {
+  return new THREE.MeshLambertMaterial({
+    color,
+    alphaTest: 0.5,
+    transparent: true
+  });
+}
+
 export class MobSystem {
   scene: THREE.Scene;
   ecs: ECSWorld;
@@ -80,9 +88,9 @@ export class MobSystem {
         const layeredMaterials = Object.fromEntries(
           Object.keys(definition.model.textureLayers).map((layer) => [
             layer,
-            new THREE.MeshLambertMaterial({
-              color: fallbackColors[type][layer] ?? fallbackColors[type].base ?? 0xffffff
-            })
+            createCutoutMobMaterial(
+              fallbackColors[type][layer] ?? fallbackColors[type].base ?? 0xffffff
+            )
           ])
         );
         return [type, layeredMaterials];

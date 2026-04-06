@@ -22,6 +22,7 @@ type QuadBuffers = {
   positions: number[];
   normals: number[];
   uvs: number[];
+  tilemaps: number[];
   lightmaps: number[];
   indices: number[];
   vertexCount: number;
@@ -288,7 +289,7 @@ function fillChunkCells(
   }
 }
 
-function appendSubQuad(
+function appendQuad(
   buffers: QuadBuffers,
   quad: {
     ax: number;
@@ -306,12 +307,14 @@ function appendSubQuad(
   },
   axis: number,
   sign: number,
-  uv: { u0: number; u1: number; v0: number; v1: number },
+  uvScale: { u: number; v: number },
+  tileBounds: { u0: number; u1: number; v0: number; v1: number },
   light: LightSample
 ): void {
   const { ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz } = quad;
-  const { u0, u1, v0, v1 } = uv;
-  const { positions, normals, uvs, indices, lightmaps } = buffers;
+  const { u, v } = uvScale;
+  const { u0, u1, v0, v1 } = tileBounds;
+  const { positions, normals, uvs, tilemaps, indices, lightmaps } = buffers;
 
   positions.push(ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz);
 
@@ -320,7 +323,8 @@ function appendSubQuad(
   const nz = axis === 2 ? sign : 0;
   normals.push(nx, ny, nz, nx, ny, nz, nx, ny, nz, nx, ny, nz);
 
-  uvs.push(u0, v0, u1, v0, u1, v1, u0, v1);
+  uvs.push(0, 0, u, 0, u, v, 0, v);
+  tilemaps.push(u0, v0, u1, v1, u0, v0, u1, v1, u0, v0, u1, v1, u0, v0, u1, v1);
   lightmaps.push(
     light.sky,
     light.block,
@@ -340,85 +344,6 @@ function appendSubQuad(
     indices.push(base, base + 2, base + 1, base, base + 3, base + 2);
   }
   buffers.vertexCount += 4;
-}
-
-function appendTiledQuad(
-  buffers: QuadBuffers,
-  quadData: {
-    p0x: number;
-    p0y: number;
-    p0z: number;
-    p1x: number;
-    p1y: number;
-    p1z: number;
-    p3x: number;
-    p3y: number;
-    p3z: number;
-    width: number;
-    height: number;
-    axis: number;
-    sign: number;
-    tile: BlockTile;
-  },
-  light: LightSample
-): void {
-  const { p0x, p0y, p0z, p1x, p1y, p1z, p3x, p3y, p3z, width, height, axis, sign, tile } = quadData;
-
-  const uv = {
-    u0: tile.x * TILE_U_SIZE + FACE_UV_EPSILON,
-    u1: (tile.x + 1) * TILE_U_SIZE - FACE_UV_EPSILON,
-    v0: 1 - (tile.y + 1) * TILE_V_SIZE + FACE_UV_EPSILON,
-    v1: 1 - tile.y * TILE_V_SIZE - FACE_UV_EPSILON
-  };
-
-  const edgeUx = (p1x - p0x) / width;
-  const edgeUy = (p1y - p0y) / width;
-  const edgeUz = (p1z - p0z) / width;
-  const edgeVx = (p3x - p0x) / height;
-  const edgeVy = (p3y - p0y) / height;
-  const edgeVz = (p3z - p0z) / height;
-
-  for (let v = 0; v < height; v++) {
-    const baseVx = p0x + edgeVx * v;
-    const baseVy = p0y + edgeVy * v;
-    const baseVz = p0z + edgeVz * v;
-    for (let u = 0; u < width; u++) {
-      const ax = baseVx + edgeUx * u;
-      const ay = baseVy + edgeUy * u;
-      const az = baseVz + edgeUz * u;
-      const bx = ax + edgeUx;
-      const by = ay + edgeUy;
-      const bz = az + edgeUz;
-      const dx = ax + edgeVx;
-      const dy = ay + edgeVy;
-      const dz = az + edgeVz;
-      const cx = bx + edgeVx;
-      const cy = by + edgeVy;
-      const cz = bz + edgeVz;
-
-      appendSubQuad(
-        buffers,
-        {
-          ax,
-          ay,
-          az,
-          bx,
-          by,
-          bz,
-          cx,
-          cy,
-          cz,
-          dx,
-          dy,
-          dz
-        },
-        axis,
-        sign,
-        uv,
-        light
-      );
-    }
-  }
 }
 
 function getMaskBuffers(maskPool: Map<number, MaskBuffers>, maskSize: number): MaskBuffers {
@@ -503,6 +428,7 @@ export function createGreedyChunkGeometry({
     positions: [],
     normals: [],
     uvs: [],
+    tilemaps: [],
     lightmaps: [],
     indices: [],
     vertexCount: 0
@@ -595,6 +521,9 @@ export function createGreedyChunkGeometry({
           const p3x = baseX + (x[0] + dv[0]) * lodStep;
           const p3y = (x[1] + dv[1]) * lodStep;
           const p3z = baseZ + (x[2] + dv[2]) * lodStep;
+          const p2x = p1x + (p3x - p0x);
+          const p2y = p1y + (p3y - p0y);
+          const p2z = p1z + (p3z - p0z);
 
           const tile = getFaceTile(currentType, axis, currentSign);
           const centerX = p0x + (p1x - p0x) * 0.5 + (p3x - p0x) * 0.5;
@@ -613,23 +542,30 @@ export function createGreedyChunkGeometry({
           );
           const block = sampleBlockLight(centerX, centerY, centerZ);
 
-          appendTiledQuad(
+          appendQuad(
             buffers,
             {
-              p0x,
-              p0y,
-              p0z,
-              p1x,
-              p1y,
-              p1z,
-              p3x,
-              p3y,
-              p3z,
-              width,
-              height,
-              axis,
-              sign: currentSign,
-              tile
+              ax: p0x,
+              ay: p0y,
+              az: p0z,
+              bx: p1x,
+              by: p1y,
+              bz: p1z,
+              cx: p2x,
+              cy: p2y,
+              cz: p2z,
+              dx: p3x,
+              dy: p3y,
+              dz: p3z
+            },
+            axis,
+            currentSign,
+            { u: width, v: height },
+            {
+              u0: tile.x * TILE_U_SIZE + FACE_UV_EPSILON,
+              u1: (tile.x + 1) * TILE_U_SIZE - FACE_UV_EPSILON,
+              v0: 1 - (tile.y + 1) * TILE_V_SIZE + FACE_UV_EPSILON,
+              v1: 1 - tile.y * TILE_V_SIZE - FACE_UV_EPSILON
             },
             { sky, block }
           );
@@ -654,6 +590,7 @@ export function createGreedyChunkGeometry({
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(buffers.positions, 3));
   geometry.setAttribute('normal', new THREE.Float32BufferAttribute(buffers.normals, 3));
   geometry.setAttribute('uv', new THREE.Float32BufferAttribute(buffers.uvs, 2));
+  geometry.setAttribute('tilemap', new THREE.Float32BufferAttribute(buffers.tilemaps, 4));
   geometry.setAttribute('lightmap', new THREE.Float32BufferAttribute(buffers.lightmaps, 2));
   geometry.setIndex(buffers.indices);
   geometry.computeBoundingSphere();
