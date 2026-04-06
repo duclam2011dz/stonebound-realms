@@ -29,7 +29,7 @@ type MobSkinFaces = {
   back: MobSkinFaceRect;
 };
 
-type AnimatedParts = Partial<Record<MobAnimationRole, THREE.Group>>;
+type AnimatedParts = Partial<Record<MobAnimationRole, THREE.Group[]>>;
 
 export type MobRenderParts = {
   root: THREE.Group;
@@ -93,8 +93,8 @@ function applyBoxUVs(geometry: THREE.BoxGeometry, faces: MobSkinFaces): void {
     'left',
     'top',
     'bottom',
-    'front',
-    'back'
+    'back',
+    'front'
   ];
 
   for (let faceIndex = 0; faceIndex < faceOrder.length; faceIndex += 1) {
@@ -158,7 +158,8 @@ function createPartGroup(
   group.rotation.set(-(part.rotationX ?? 0), part.rotationY ?? 0, -(part.rotationZ ?? 0));
 
   if (part.animationRole) {
-    animated[part.animationRole] = group;
+    animated[part.animationRole] ??= [];
+    animated[part.animationRole]?.push(group);
   }
 
   for (const cube of part.cubes) {
@@ -198,7 +199,9 @@ export function createMobModel(
   const animated: AnimatedParts = {};
 
   for (const part of definition.model.parts) {
-    root.add(createPartGroup(definition, part, definition.model.textureLayers, materials, animated));
+    root.add(
+      createPartGroup(definition, part, definition.model.textureLayers, materials, animated)
+    );
   }
 
   return {

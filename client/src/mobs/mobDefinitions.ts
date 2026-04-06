@@ -51,6 +51,7 @@ export type MobPartDefinition = {
 
 export type MobModelDefinition = {
   groundY: number;
+  yawOffset: number;
   textureLayers: Record<string, MobTextureLayerDefinition>;
   parts: MobPartDefinition[];
 };
@@ -79,6 +80,7 @@ const MOB_DEFINITIONS: Record<MobType, MobDefinition> = {
     drops: { food: 'pork', amount: 1 },
     model: {
       groundY: 24,
+      yawOffset: Math.PI,
       textureLayers: {
         base: {
           textureUrl: temperatePigUrl,
@@ -232,6 +234,7 @@ const MOB_DEFINITIONS: Record<MobType, MobDefinition> = {
     drops: { food: 'beef', amount: 1 },
     model: {
       groundY: 24,
+      yawOffset: Math.PI,
       textureLayers: {
         base: {
           textureUrl: temperateCowUrl,
@@ -407,6 +410,7 @@ const MOB_DEFINITIONS: Record<MobType, MobDefinition> = {
     drops: { food: 'mutton', amount: 1 },
     model: {
       groundY: 24,
+      yawOffset: Math.PI,
       textureLayers: {
         base: {
           textureUrl: sheepUrl,
@@ -445,6 +449,7 @@ const MOB_DEFINITIONS: Record<MobType, MobDefinition> = {
           pivotX: 0,
           pivotY: 6,
           pivotZ: -8,
+          animationRole: 'head',
           cubes: [
             {
               textureLayer: 'wool',
@@ -586,6 +591,7 @@ const MOB_DEFINITIONS: Record<MobType, MobDefinition> = {
           pivotX: -3,
           pivotY: 12,
           pivotZ: 7,
+          animationRole: 'rightHindLeg',
           cubes: [
             {
               textureLayer: 'wool',
@@ -606,6 +612,7 @@ const MOB_DEFINITIONS: Record<MobType, MobDefinition> = {
           pivotX: 3,
           pivotY: 12,
           pivotZ: 7,
+          animationRole: 'leftHindLeg',
           cubes: [
             {
               textureLayer: 'wool',
@@ -626,6 +633,7 @@ const MOB_DEFINITIONS: Record<MobType, MobDefinition> = {
           pivotX: -3,
           pivotY: 12,
           pivotZ: -5,
+          animationRole: 'rightFrontLeg',
           cubes: [
             {
               textureLayer: 'wool',
@@ -646,6 +654,7 @@ const MOB_DEFINITIONS: Record<MobType, MobDefinition> = {
           pivotX: 3,
           pivotY: 12,
           pivotZ: -5,
+          animationRole: 'leftFrontLeg',
           cubes: [
             {
               textureLayer: 'wool',
@@ -675,6 +684,7 @@ const MOB_DEFINITIONS: Record<MobType, MobDefinition> = {
     drops: { food: 'chicken', amount: 1 },
     model: {
       groundY: 24,
+      yawOffset: Math.PI,
       textureLayers: {
         base: {
           textureUrl: temperateChickenUrl,

@@ -1,4 +1,7 @@
-import { getBlockFallbackSwatch, getBlockSlotIconUrl } from '../textures/block/blockTextureRegistry';
+import {
+  getBlockFallbackSwatch,
+  getBlockSlotIconUrl
+} from '../textures/block/blockTextureRegistry';
 import { getFoodDefinition } from './foodDefinitions';
 import { getItemDefinition } from './itemDefinitions';
 import type { InventorySlot } from './itemTypes';

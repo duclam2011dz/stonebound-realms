@@ -554,3 +554,19 @@ Update 2026-04-06 (Dependabot cleanup + Java-accurate passive mob models):
     - `output/png-texture-assets/metrics.json`
     - `output/png-texture-assets/mob-textures.png`
     - `output/png-texture-assets/world-textures.png`
+
+Update 2026-04-06 (mob UV/front-facing correction pass):
+
+- Model/render fixes after visual review against the reference screenshots:
+  - Corrected the mob box UV application so Minecraft `front` texture regions now land on the actual front-facing geometry instead of the rear face.
+  - Added a shared passive-mob yaw offset so the rendered model now faces the same direction the AI movement system considers "forward".
+  - Sheep wool leg overlays now share the same animation roles as the base legs, keeping the wool layer synchronized through the walk cycle.
+  - Spawned mob render roots now also inherit the corrected facing offset immediately on creation.
+- Playwright verification:
+  - Re-ran `tools/test_png_texture_assets.mjs` after the UV/yaw fixes and visually inspected:
+    - `output/png-texture-assets/mob-textures.png`
+    - `output/png-texture-assets/mob-walk-cycle.png`
+  - Added metrics for:
+    - per-role walk pose rotations
+    - sheep wool/base leg sync
+    - movement-facing alignment (`orientationMetrics`, expected dot product >= `0.98`)

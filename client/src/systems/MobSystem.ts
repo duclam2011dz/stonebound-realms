@@ -345,7 +345,7 @@ export class MobSystem {
             );
       if (panicGround >= 0) transform.position.y = panicGround + 1;
       render.parts.root.position.copy(transform.position);
-      render.parts.root.rotation.y = transform.yaw;
+      render.parts.root.rotation.y = transform.yaw + definition.model.yawOffset;
       ai.walkPhase += dt * definition.speed * 8;
       const swing = Math.sin(ai.walkPhase) * 0.9;
       this.applyMobAnimation(render, definition.type, swing, ai.walkPhase, true);
@@ -369,7 +369,7 @@ export class MobSystem {
     this.followPath(transform, ai, definition, mobPositions, surfaceCache, dt);
 
     render.parts.root.position.copy(transform.position);
-    render.parts.root.rotation.y = transform.yaw;
+    render.parts.root.rotation.y = transform.yaw + definition.model.yawOffset;
 
     const speed = definition.speed;
     const moving = ai.path.length > 0 ? 1 : 0;
@@ -387,27 +387,40 @@ export class MobSystem {
   ): void {
     const animated = render.parts.animated;
 
-    if (
-      animated.rightFrontLeg &&
-      animated.leftFrontLeg &&
-      animated.rightHindLeg &&
-      animated.leftHindLeg
-    ) {
-      animated.rightFrontLeg.rotation.x = swing;
-      animated.leftFrontLeg.rotation.x = -swing;
-      animated.rightHindLeg.rotation.x = -swing;
-      animated.leftHindLeg.rotation.x = swing;
+    for (const group of animated.rightFrontLeg ?? []) {
+      group.rotation.x = swing;
+    }
+    for (const group of animated.leftFrontLeg ?? []) {
+      group.rotation.x = -swing;
+    }
+    for (const group of animated.rightHindLeg ?? []) {
+      group.rotation.x = -swing;
+    }
+    for (const group of animated.leftHindLeg ?? []) {
+      group.rotation.x = swing;
     }
 
-    if (animated.rightLeg && animated.leftLeg) {
-      animated.rightLeg.rotation.x = swing;
-      animated.leftLeg.rotation.x = -swing;
+    for (const group of animated.rightLeg ?? []) {
+      group.rotation.x = swing;
+    }
+    for (const group of animated.leftLeg ?? []) {
+      group.rotation.x = -swing;
+    }
+
+    if ((animated.head?.length ?? 0) > 0) {
+      for (const group of animated.head ?? []) {
+        group.rotation.x = 0;
+      }
     }
 
     if (type === 'chicken' && animated.rightWing && animated.leftWing) {
       const flap = moving ? Math.sin(walkPhase * 1.4) * 0.35 : 0.12;
-      animated.rightWing.rotation.z = flap;
-      animated.leftWing.rotation.z = -flap;
+      for (const group of animated.rightWing) {
+        group.rotation.z = flap;
+      }
+      for (const group of animated.leftWing) {
+        group.rotation.z = -flap;
+      }
     }
   }
 

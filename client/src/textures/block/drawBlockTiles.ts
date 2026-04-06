@@ -22,7 +22,22 @@ export function drawBlockTiles(ctx: CanvasRenderingContext2D, tileSize: number):
   drawSandTile(ctx, BLOCK_FACE_TILES.sand.all.x, BLOCK_FACE_TILES.sand.all.y, tileSize);
   drawLampTile(ctx, BLOCK_FACE_TILES.lamp.all.x, BLOCK_FACE_TILES.lamp.all.y, tileSize);
   drawPlankTile(ctx, BLOCK_FACE_TILES.plank.all.x, BLOCK_FACE_TILES.plank.all.y, tileSize);
-  drawCraftingTableTile(ctx, BLOCK_FACE_TILES.crafting_table.top.x, BLOCK_FACE_TILES.crafting_table.top.y, tileSize);
-  drawCraftingTableTile(ctx, BLOCK_FACE_TILES.crafting_table.side.x, BLOCK_FACE_TILES.crafting_table.side.y, tileSize);
-  drawCraftingTableTile(ctx, BLOCK_FACE_TILES.crafting_table.front.x, BLOCK_FACE_TILES.crafting_table.front.y, tileSize);
+  drawCraftingTableTile(
+    ctx,
+    BLOCK_FACE_TILES.crafting_table.top.x,
+    BLOCK_FACE_TILES.crafting_table.top.y,
+    tileSize
+  );
+  drawCraftingTableTile(
+    ctx,
+    BLOCK_FACE_TILES.crafting_table.side.x,
+    BLOCK_FACE_TILES.crafting_table.side.y,
+    tileSize
+  );
+  drawCraftingTableTile(
+    ctx,
+    BLOCK_FACE_TILES.crafting_table.front.x,
+    BLOCK_FACE_TILES.crafting_table.front.y,
+    tileSize
+  );
 }

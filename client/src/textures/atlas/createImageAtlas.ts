@@ -84,10 +84,7 @@ export async function createImageAtlas({
 
     ctx.save();
     if (placement.flipX || placement.flipY) {
-      ctx.translate(
-        dx + (placement.flipX ? tileSize : 0),
-        dy + (placement.flipY ? tileSize : 0)
-      );
+      ctx.translate(dx + (placement.flipX ? tileSize : 0), dy + (placement.flipY ? tileSize : 0));
       ctx.scale(placement.flipX ? -1 : 1, placement.flipY ? -1 : 1);
       ctx.drawImage(
         image,

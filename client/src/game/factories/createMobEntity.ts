@@ -39,6 +39,7 @@ export function createMobEntity({
 
   const parts = createMobModel(definition, materials);
   parts.root.position.copy(position);
+  parts.root.rotation.y = definition.model.yawOffset;
   ecs.addComponent(entityId, COMPONENT_MOB_RENDER, createMobRender(parts));
   scene.add(parts.root);
   return entityId;

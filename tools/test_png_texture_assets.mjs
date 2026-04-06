@@ -16,19 +16,22 @@ const page = await browser.newPage({
 await page.goto('http://127.0.0.1:4173/pages/game.html', { waitUntil: 'domcontentloaded' });
 await page.waitForTimeout(1600);
 
-await page.waitForFunction(() => {
-  const game = window.__game;
-  if (!game) return false;
-  const blockReady = Boolean(game.world?.blockMaterial?.map?.image);
-  const mobMaterials = game.systems?.mobs?.materials;
-  if (!mobMaterials) return false;
-  return (
-    blockReady &&
-    ['pig', 'cow', 'chicken', 'sheep'].every((type) =>
-      Object.values(mobMaterials[type] ?? {}).every((material) => Boolean(material?.map?.image))
-    )
-  );
-}, { timeout: 60000 });
+await page.waitForFunction(
+  () => {
+    const game = window.__game;
+    if (!game) return false;
+    const blockReady = Boolean(game.world?.blockMaterial?.map?.image);
+    const mobMaterials = game.systems?.mobs?.materials;
+    if (!mobMaterials) return false;
+    return (
+      blockReady &&
+      ['pig', 'cow', 'chicken', 'sheep'].every((type) =>
+        Object.values(mobMaterials[type] ?? {}).every((material) => Boolean(material?.map?.image))
+      )
+    );
+  },
+  { timeout: 60000 }
+);
 
 const setupMetrics = await page.evaluate(() => {
   const game = window.__game;
@@ -109,11 +112,11 @@ const setupMetrics = await page.evaluate(() => {
     const mobTransform = game.ecs.getComponent(entityId, 'transform');
     const mobRender = game.ecs.getComponent(entityId, 'mob_render');
     if (mobTransform) {
-      mobTransform.yaw = 0;
+      mobTransform.yaw = Math.PI;
     }
     if (mobRender && mobTransform) {
       mobRender.parts.root.position.copy(mobTransform.position);
-      mobRender.parts.root.rotation.y = mobTransform.yaw;
+      mobRender.parts.root.rotation.y = mobTransform.yaw + Math.PI;
     }
     spawned.push({ type: spawn.type, entityId });
   }
@@ -191,6 +194,83 @@ await page.screenshot({
   omitBackground: false
 });
 
+const walkPoseMetrics = await page.evaluate((spawned) => {
+  const game = window.__game;
+  if (!game) return null;
+
+  const poseSummary = {};
+  for (const { type, entityId } of spawned) {
+    const render = game.ecs.getComponent(entityId, 'mob_render');
+    if (!render) continue;
+    game.systems.mobs.applyMobAnimation(render, type, 0.72, 1.25, true);
+
+    const animated = render.parts.animated;
+    poseSummary[type] = Object.fromEntries(
+      Object.entries(animated).map(([role, groups]) => [
+        role,
+        (groups ?? []).map((group) => ({
+          x: Number(group.rotation.x.toFixed(4)),
+          y: Number(group.rotation.y.toFixed(4)),
+          z: Number(group.rotation.z.toFixed(4))
+        }))
+      ])
+    );
+  }
+
+  game.renderContext.render();
+  return poseSummary;
+}, setupMetrics.spawned);
+
+const orientationMetrics = await page.evaluate((spawned) => {
+  const game = window.__game;
+  if (!game) return null;
+  const Vector3 = game.renderContext.camera.position.constructor;
+
+  return Object.fromEntries(
+    spawned.map(({ type, entityId }) => {
+      const transform = game.ecs.getComponent(entityId, 'transform');
+      const render = game.ecs.getComponent(entityId, 'mob_render');
+      if (!transform || !render) {
+        return [type, null];
+      }
+
+      const forward = new Vector3(0, 0, -1).applyQuaternion(render.parts.root.quaternion);
+      const expectedX = Math.sin(transform.yaw);
+      const expectedZ = Math.cos(transform.yaw);
+      const dot = expectedX * forward.x + expectedZ * forward.z;
+      return [type, Number(dot.toFixed(4))];
+    })
+  );
+}, setupMetrics.spawned);
+
+await page.waitForTimeout(100);
+await page.screenshot({
+  path: path.join(outDir, 'mob-walk-cycle.png'),
+  omitBackground: false
+});
+
+if (!walkPoseMetrics?.sheep?.rightFrontLeg || walkPoseMetrics.sheep.rightFrontLeg.length < 2) {
+  throw new Error('Expected sheep walk pose to animate both the leg skin and wool leg overlay.');
+}
+
+const sheepRightFrontLegRotations = walkPoseMetrics.sheep.rightFrontLeg.map((entry) => entry.x);
+const sheepRightFrontLegSpread =
+  Math.max(...sheepRightFrontLegRotations) - Math.min(...sheepRightFrontLegRotations);
+if (sheepRightFrontLegSpread > 1e-4) {
+  throw new Error(
+    `Expected sheep wool leg overlay to stay in sync with the base leg, received rotations ${sheepRightFrontLegRotations.join(', ')}.`
+  );
+}
+
+if (
+  !orientationMetrics ||
+  Object.values(orientationMetrics).some((dot) => dot === null || dot < 0.98)
+) {
+  throw new Error(
+    `Expected mob facing direction to match movement yaw, received ${JSON.stringify(orientationMetrics)}.`
+  );
+}
+
 const hotbarBackgrounds = await page.$$eval('#hotbar .hotbar-swatch', (elements) =>
   elements.map((element) => {
     const node = /** @type {HTMLElement} */ (element);
@@ -199,7 +279,9 @@ const hotbarBackgrounds = await page.$$eval('#hotbar .hotbar-swatch', (elements)
 );
 
 if (hotbarBackgrounds.slice(0, 7).some((value) => !value || value === 'none')) {
-  throw new Error(`Expected PNG-backed hotbar swatches, received ${hotbarBackgrounds.join(' | ')}.`);
+  throw new Error(
+    `Expected PNG-backed hotbar swatches, received ${hotbarBackgrounds.join(' | ')}.`
+  );
 }
 
 await page.evaluate(() => {
@@ -231,6 +313,8 @@ if (inventoryBackgrounds.some((value) => !value || value === 'none')) {
 
 const metrics = {
   ...setupMetrics,
+  walkPoseMetrics,
+  orientationMetrics,
   hotbarBackgrounds,
   inventoryBackgrounds
 };
