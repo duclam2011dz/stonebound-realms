@@ -6,12 +6,15 @@ import {
   BLOCK_ID_DIRT,
   BLOCK_ID_GRASS,
   BLOCK_ID_LEAF,
+  BLOCK_ID_LAMP,
+  BLOCK_ID_PLANK,
   BLOCK_ID_SAND,
   BLOCK_ID_STONE,
   BLOCK_ID_WOOD,
-  BLOCK_ID_LAMP,
-  BLOCK_ID_PLANK,
-  BLOCK_ID_CRAFTING_TABLE
+  BLOCK_ID_CRAFTING_TABLE,
+  doesBlockOccludeNeighborFaces,
+  getBlockRenderLayer,
+  type BlockRenderLayer
 } from '../BlockPalette';
 
 type BlockTile = { x: number; y: number };
@@ -27,6 +30,13 @@ type QuadBuffers = {
   indices: number[];
   vertexCount: number;
 };
+
+export type ChunkGeometryLayers = {
+  solid: THREE.BufferGeometry | null;
+  cutout: THREE.BufferGeometry | null;
+};
+
+type LayeredQuadBuffers = Record<BlockRenderLayer, QuadBuffers>;
 
 const FACE_UV_EPSILON = 0.0001;
 const AXIS_TO_UV_AXES = [
@@ -346,6 +356,188 @@ function appendQuad(
   buffers.vertexCount += 4;
 }
 
+function createQuadBuffers(): QuadBuffers {
+  return {
+    positions: [],
+    normals: [],
+    uvs: [],
+    tilemaps: [],
+    lightmaps: [],
+    indices: [],
+    vertexCount: 0
+  };
+}
+
+function createLayeredQuadBuffers(): LayeredQuadBuffers {
+  return {
+    solid: createQuadBuffers(),
+    cutout: createQuadBuffers()
+  };
+}
+
+function createGeometryFromBuffers(buffers: QuadBuffers): THREE.BufferGeometry | null {
+  if (buffers.indices.length === 0) return null;
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(buffers.positions, 3));
+  geometry.setAttribute('normal', new THREE.Float32BufferAttribute(buffers.normals, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(buffers.uvs, 2));
+  geometry.setAttribute('tilemap', new THREE.Float32BufferAttribute(buffers.tilemaps, 4));
+  geometry.setAttribute('lightmap', new THREE.Float32BufferAttribute(buffers.lightmaps, 2));
+  geometry.setIndex(buffers.indices);
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+function shouldRenderFace(blockId: number, neighborId: number): boolean {
+  if (blockId === BLOCK_ID_AIR) return false;
+  if (neighborId === BLOCK_ID_AIR) return true;
+  return !doesBlockOccludeNeighborFaces(blockId) || !doesBlockOccludeNeighborFaces(neighborId);
+}
+
+function emitMaskQuads({
+  maskTypes,
+  dimensions,
+  axis,
+  sign,
+  x,
+  baseX,
+  baseZ,
+  lodStep,
+  chunkSize,
+  maxHeight,
+  storage,
+  skyHeights,
+  layerBuffers,
+  sampleBlockLight
+}: {
+  maskTypes: Uint8Array;
+  dimensions: [number, number, number];
+  axis: (typeof AXES)[number];
+  sign: -1 | 1;
+  x: [number, number, number];
+  baseX: number;
+  baseZ: number;
+  lodStep: number;
+  chunkSize: number;
+  maxHeight: number;
+  storage: VoxelStorage;
+  skyHeights: Int16Array;
+  layerBuffers: LayeredQuadBuffers;
+  sampleBlockLight: (worldX: number, worldY: number, worldZ: number) => number;
+}): void {
+  const { uAxis, vAxis } = AXIS_TO_UV_AXES[axis];
+  const rowWidth = dimensions[uAxis];
+  const rowCount = dimensions[vAxis];
+  let n = 0;
+
+  for (let j = 0; j < rowCount; j++) {
+    for (let i = 0; i < rowWidth; ) {
+      const currentType = maskTypes[n] ?? BLOCK_ID_AIR;
+      if (currentType === BLOCK_ID_AIR) {
+        i += 1;
+        n += 1;
+        continue;
+      }
+
+      let width = 1;
+      while (i + width < rowWidth && maskTypes[n + width] === currentType) {
+        width += 1;
+      }
+
+      let height = 1;
+      let canGrow = true;
+      while (j + height < rowCount && canGrow) {
+        for (let k = 0; k < width; k++) {
+          const index = n + k + height * rowWidth;
+          if (maskTypes[index] !== currentType) {
+            canGrow = false;
+            break;
+          }
+        }
+        if (canGrow) height += 1;
+      }
+
+      x[uAxis] = i;
+      x[vAxis] = j;
+
+      const du: [number, number, number] = [0, 0, 0];
+      const dv: [number, number, number] = [0, 0, 0];
+      du[uAxis] = width;
+      dv[vAxis] = height;
+
+      const p0x = baseX + x[0] * lodStep;
+      const p0y = x[1] * lodStep;
+      const p0z = baseZ + x[2] * lodStep;
+
+      const p1x = baseX + (x[0] + du[0]) * lodStep;
+      const p1y = (x[1] + du[1]) * lodStep;
+      const p1z = baseZ + (x[2] + du[2]) * lodStep;
+
+      const p3x = baseX + (x[0] + dv[0]) * lodStep;
+      const p3y = (x[1] + dv[1]) * lodStep;
+      const p3z = baseZ + (x[2] + dv[2]) * lodStep;
+      const p2x = p1x + (p3x - p0x);
+      const p2y = p1y + (p3y - p0y);
+      const p2z = p1z + (p3z - p0z);
+
+      const tile = getFaceTile(currentType, axis, sign);
+      const centerX = p0x + (p1x - p0x) * 0.5 + (p3x - p0x) * 0.5;
+      const centerY = p0y + (p1y - p0y) * 0.5 + (p3y - p0y) * 0.5;
+      const centerZ = p0z + (p1z - p0z) * 0.5 + (p3z - p0z) * 0.5;
+      const sky = computeSkyLight(
+        skyHeights,
+        baseX,
+        baseZ,
+        chunkSize,
+        maxHeight,
+        storage,
+        Math.floor(centerX),
+        centerY,
+        Math.floor(centerZ)
+      );
+      const block = sampleBlockLight(centerX, centerY, centerZ);
+
+      appendQuad(
+        layerBuffers[getBlockRenderLayer(currentType)],
+        {
+          ax: p0x,
+          ay: p0y,
+          az: p0z,
+          bx: p1x,
+          by: p1y,
+          bz: p1z,
+          cx: p2x,
+          cy: p2y,
+          cz: p2z,
+          dx: p3x,
+          dy: p3y,
+          dz: p3z
+        },
+        axis,
+        sign,
+        { u: width, v: height },
+        {
+          u0: tile.x * TILE_U_SIZE + FACE_UV_EPSILON,
+          u1: (tile.x + 1) * TILE_U_SIZE - FACE_UV_EPSILON,
+          v0: 1 - (tile.y + 1) * TILE_V_SIZE + FACE_UV_EPSILON,
+          v1: 1 - tile.y * TILE_V_SIZE - FACE_UV_EPSILON
+        },
+        { sky, block }
+      );
+
+      for (let h = 0; h < height; h++) {
+        const rowStart = n + h * rowWidth;
+        for (let w = 0; w < width; w++) {
+          maskTypes[rowStart + w] = BLOCK_ID_AIR;
+        }
+      }
+
+      i += width;
+      n += width;
+    }
+  }
+}
+
 function getMaskBuffers(maskPool: Map<number, MaskBuffers>, maskSize: number): MaskBuffers {
   let buffers = maskPool.get(maskSize);
   if (!buffers) {
@@ -376,7 +568,7 @@ export function createGreedyChunkGeometry({
   maxHeight: number;
   maskPool: Map<number, MaskBuffers>;
   lightSources?: LightSource[];
-}): THREE.BufferGeometry | null {
+}): ChunkGeometryLayers {
   const sizeX = Math.max(1, Math.floor(chunkSize / lodStep));
   const sizeY = Math.max(1, Math.floor(maxHeight / lodStep));
   const sizeZ = Math.max(1, Math.floor(chunkSize / lodStep));
@@ -424,175 +616,89 @@ export function createGreedyChunkGeometry({
     return level / MAX_BLOCK_LIGHT;
   };
 
-  const buffers: QuadBuffers = {
-    positions: [],
-    normals: [],
-    uvs: [],
-    tilemaps: [],
-    lightmaps: [],
-    indices: [],
-    vertexCount: 0
-  };
+  const layerBuffers = createLayeredQuadBuffers();
 
   for (const axis of AXES) {
     const { uAxis, vAxis } = AXIS_TO_UV_AXES[axis];
     const maskWidth = dimensions[uAxis];
     const maskHeight = dimensions[vAxis];
     const maskSize = maskWidth * maskHeight;
-    const { types: maskTypes, signs: maskSigns } = getMaskBuffers(maskPool, maskSize);
+    const { types: maskTypes } = getMaskBuffers(maskPool, maskSize);
 
     const x: [number, number, number] = [0, 0, 0];
     const q: [number, number, number] = [0, 0, 0];
     q[axis] = 1;
 
     for (x[axis] = -1; x[axis] < dimensions[axis]; ) {
+      const plane = x[axis];
       let n = 0;
+
       for (x[vAxis] = 0; x[vAxis] < dimensions[vAxis]; x[vAxis]++) {
         for (x[uAxis] = 0; x[uAxis] < dimensions[uAxis]; x[uAxis]++) {
-          const a = x[axis] >= 0 ? getCell(x[0], x[1], x[2]) : BLOCK_ID_AIR;
+          const a = plane >= 0 ? getCell(x[0], x[1], x[2]) : BLOCK_ID_AIR;
           const b =
-            x[axis] < dimensions[axis] - 1
+            plane < dimensions[axis] - 1
               ? getCell(x[0] + q[0], x[1] + q[1], x[2] + q[2])
               : BLOCK_ID_AIR;
-          if ((a === BLOCK_ID_AIR) === (b === BLOCK_ID_AIR)) {
-            maskTypes[n] = BLOCK_ID_AIR;
-            maskSigns[n] = 0;
-          } else if (a !== BLOCK_ID_AIR) {
-            maskTypes[n] = a;
-            maskSigns[n] = 1;
-          } else {
-            maskTypes[n] = b;
-            maskSigns[n] = -1;
-          }
+          maskTypes[n] = shouldRenderFace(a, b) ? a : BLOCK_ID_AIR;
           n += 1;
         }
       }
 
-      x[axis] += 1;
+      x[axis] = plane + 1;
+      emitMaskQuads({
+        maskTypes,
+        dimensions,
+        axis,
+        sign: 1,
+        x,
+        baseX,
+        baseZ,
+        lodStep,
+        chunkSize,
+        maxHeight,
+        storage,
+        skyHeights,
+        layerBuffers,
+        sampleBlockLight
+      });
+
+      x[axis] = plane;
       n = 0;
-      for (let j = 0; j < dimensions[vAxis]; j++) {
-        for (let i = 0; i < dimensions[uAxis]; ) {
-          const currentType = maskTypes[n] ?? BLOCK_ID_AIR;
-          if (currentType === BLOCK_ID_AIR) {
-            i += 1;
-            n += 1;
-            continue;
-          }
-          const currentSign = maskSigns[n] ?? 0;
-
-          let width = 1;
-          while (
-            i + width < dimensions[uAxis] &&
-            maskTypes[n + width] === currentType &&
-            maskSigns[n + width] === currentSign
-          ) {
-            width += 1;
-          }
-
-          let height = 1;
-          let canGrow = true;
-          while (j + height < dimensions[vAxis] && canGrow) {
-            for (let k = 0; k < width; k++) {
-              const index = n + k + height * dimensions[uAxis];
-              if (maskTypes[index] !== currentType || maskSigns[index] !== currentSign) {
-                canGrow = false;
-                break;
-              }
-            }
-            if (canGrow) height += 1;
-          }
-
-          x[uAxis] = i;
-          x[vAxis] = j;
-
-          const du: [number, number, number] = [0, 0, 0];
-          const dv: [number, number, number] = [0, 0, 0];
-          du[uAxis] = width;
-          dv[vAxis] = height;
-
-          const p0x = baseX + x[0] * lodStep;
-          const p0y = x[1] * lodStep;
-          const p0z = baseZ + x[2] * lodStep;
-
-          const p1x = baseX + (x[0] + du[0]) * lodStep;
-          const p1y = (x[1] + du[1]) * lodStep;
-          const p1z = baseZ + (x[2] + du[2]) * lodStep;
-
-          const p3x = baseX + (x[0] + dv[0]) * lodStep;
-          const p3y = (x[1] + dv[1]) * lodStep;
-          const p3z = baseZ + (x[2] + dv[2]) * lodStep;
-          const p2x = p1x + (p3x - p0x);
-          const p2y = p1y + (p3y - p0y);
-          const p2z = p1z + (p3z - p0z);
-
-          const tile = getFaceTile(currentType, axis, currentSign);
-          const centerX = p0x + (p1x - p0x) * 0.5 + (p3x - p0x) * 0.5;
-          const centerY = p0y + (p1y - p0y) * 0.5 + (p3y - p0y) * 0.5;
-          const centerZ = p0z + (p1z - p0z) * 0.5 + (p3z - p0z) * 0.5;
-          const sky = computeSkyLight(
-            skyHeights,
-            baseX,
-            baseZ,
-            chunkSize,
-            maxHeight,
-            storage,
-            Math.floor(centerX),
-            centerY,
-            Math.floor(centerZ)
-          );
-          const block = sampleBlockLight(centerX, centerY, centerZ);
-
-          appendQuad(
-            buffers,
-            {
-              ax: p0x,
-              ay: p0y,
-              az: p0z,
-              bx: p1x,
-              by: p1y,
-              bz: p1z,
-              cx: p2x,
-              cy: p2y,
-              cz: p2z,
-              dx: p3x,
-              dy: p3y,
-              dz: p3z
-            },
-            axis,
-            currentSign,
-            { u: width, v: height },
-            {
-              u0: tile.x * TILE_U_SIZE + FACE_UV_EPSILON,
-              u1: (tile.x + 1) * TILE_U_SIZE - FACE_UV_EPSILON,
-              v0: 1 - (tile.y + 1) * TILE_V_SIZE + FACE_UV_EPSILON,
-              v1: 1 - tile.y * TILE_V_SIZE - FACE_UV_EPSILON
-            },
-            { sky, block }
-          );
-
-          for (let h = 0; h < height; h++) {
-            const rowStart = n + h * dimensions[uAxis];
-            for (let w = 0; w < width; w++) {
-              maskTypes[rowStart + w] = BLOCK_ID_AIR;
-              maskSigns[rowStart + w] = 0;
-            }
-          }
-
-          i += width;
-          n += width;
+      for (x[vAxis] = 0; x[vAxis] < dimensions[vAxis]; x[vAxis]++) {
+        for (x[uAxis] = 0; x[uAxis] < dimensions[uAxis]; x[uAxis]++) {
+          const a = plane >= 0 ? getCell(x[0], x[1], x[2]) : BLOCK_ID_AIR;
+          const b =
+            plane < dimensions[axis] - 1
+              ? getCell(x[0] + q[0], x[1] + q[1], x[2] + q[2])
+              : BLOCK_ID_AIR;
+          maskTypes[n] = shouldRenderFace(b, a) ? b : BLOCK_ID_AIR;
+          n += 1;
         }
       }
+
+      x[axis] = plane + 1;
+      emitMaskQuads({
+        maskTypes,
+        dimensions,
+        axis,
+        sign: -1,
+        x,
+        baseX,
+        baseZ,
+        lodStep,
+        chunkSize,
+        maxHeight,
+        storage,
+        skyHeights,
+        layerBuffers,
+        sampleBlockLight
+      });
     }
   }
 
-  if (buffers.indices.length === 0) return null;
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(buffers.positions, 3));
-  geometry.setAttribute('normal', new THREE.Float32BufferAttribute(buffers.normals, 3));
-  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(buffers.uvs, 2));
-  geometry.setAttribute('tilemap', new THREE.Float32BufferAttribute(buffers.tilemaps, 4));
-  geometry.setAttribute('lightmap', new THREE.Float32BufferAttribute(buffers.lightmaps, 2));
-  geometry.setIndex(buffers.indices);
-  geometry.computeBoundingSphere();
-  return geometry;
+  return {
+    solid: createGeometryFromBuffers(layerBuffers.solid),
+    cutout: createGeometryFromBuffers(layerBuffers.cutout)
+  };
 }

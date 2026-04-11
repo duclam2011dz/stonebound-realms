@@ -8,7 +8,10 @@ import {
   type GameSettings
 } from '../config/constants';
 import { loadBlockAtlasAssets } from '../textures/block/blockAtlas';
-import { createVoxelMaterial } from '../core/render/lighting/createVoxelMaterial';
+import {
+  createVoxelMaterial,
+  setVoxelMaterialFullBright
+} from '../core/render/lighting/createVoxelMaterial';
 import { TerrainGenerator } from './services/TerrainGenerator';
 import { VoxelChunkMesher } from './services/VoxelChunkMesher';
 import { VoxelRaycaster, type VoxelHit } from './services/VoxelRaycaster';
@@ -35,8 +38,14 @@ type SunOcclusion = {
 
 type SpawnPoint = { x: number; y: number; z: number };
 
-function createFallbackMaterial(): THREE.MeshLambertMaterial {
-  return new THREE.MeshLambertMaterial({ color: 0x7b5438 });
+type ChunkMeshSet = {
+  root: THREE.Group;
+  solid: THREE.Mesh | null;
+  cutout: THREE.Mesh | null;
+};
+
+function createFallbackMaterial(color: number, alphaTest = 0): THREE.MeshLambertMaterial {
+  return new THREE.MeshLambertMaterial({ color, alphaTest });
 }
 
 function buildSpawnOffsets(maxRadius = 6): Array<{ x: number; z: number; distanceSq: number }> {
@@ -101,12 +110,13 @@ export class VoxelWorld {
   lampSourcesByChunk: Map<string, LightSource[]>;
   mesher: VoxelChunkMesher;
   raycaster: VoxelRaycaster;
-  chunkMeshes: Map<string, THREE.Mesh>;
+  chunkMeshes: Map<string, ChunkMeshSet>;
   chunkLodSteps: Map<string, number>;
   desiredChunks: Set<string>;
   chunkTaskQueue: ChunkTaskQueue;
   visibleEpoch: number;
-  blockMaterial: THREE.MeshLambertMaterial;
+  solidBlockMaterial: THREE.MeshLambertMaterial;
+  cutoutBlockMaterial: THREE.MeshLambertMaterial;
   spectatorViewEnabled: boolean;
 
   constructor(scene: THREE.Scene, settings: GameSettings, worldConfig: WorldConfig = {}) {
@@ -134,34 +144,54 @@ export class VoxelWorld {
     this.desiredChunks = new Set();
     this.chunkTaskQueue = new ChunkTaskQueue();
     this.visibleEpoch = 0;
-    this.blockMaterial = createFallbackMaterial();
+    this.solidBlockMaterial = createFallbackMaterial(0x7b5438);
+    this.cutoutBlockMaterial = createFallbackMaterial(0x4f9f4e, 0.5);
     this.spectatorViewEnabled = false;
 
+    this.applyBlockMaterialViewMode();
     this.initializeBlockAtlas();
   }
 
   initializeBlockAtlas(): void {
     void loadBlockAtlasAssets()
       .then((atlasAssets) => {
-        const previousMaterial = this.blockMaterial;
-        this.blockMaterial = createVoxelMaterial(atlasAssets.texture);
+        const previousSolidMaterial = this.solidBlockMaterial;
+        const previousCutoutMaterial = this.cutoutBlockMaterial;
+        this.solidBlockMaterial = createVoxelMaterial(atlasAssets.texture);
+        this.cutoutBlockMaterial = createVoxelMaterial(atlasAssets.texture, { alphaTest: 0.5 });
         this.applyBlockMaterialViewMode();
-        for (const mesh of this.chunkMeshes.values()) {
-          mesh.material = this.blockMaterial;
+        for (const chunkMesh of this.chunkMeshes.values()) {
+          this.applyChunkMaterials(chunkMesh);
         }
-        previousMaterial.dispose();
+        previousSolidMaterial.dispose();
+        previousCutoutMaterial.dispose();
       })
       .catch((error: unknown) => {
         console.error('Failed to initialize block atlas from PNG assets.', error);
       });
   }
 
+  applyChunkMaterials(chunkMesh: ChunkMeshSet): void {
+    if (chunkMesh.solid) chunkMesh.solid.material = this.solidBlockMaterial;
+    if (chunkMesh.cutout) chunkMesh.cutout.material = this.cutoutBlockMaterial;
+  }
+
   applyBlockMaterialViewMode(): void {
-    this.blockMaterial.transparent = this.spectatorViewEnabled;
-    this.blockMaterial.opacity = this.spectatorViewEnabled ? 0.28 : 1;
-    this.blockMaterial.depthWrite = true;
-    this.blockMaterial.side = THREE.FrontSide;
-    this.blockMaterial.needsUpdate = true;
+    this.solidBlockMaterial.transparent = this.spectatorViewEnabled;
+    this.solidBlockMaterial.opacity = this.spectatorViewEnabled ? 0.36 : 1;
+    this.solidBlockMaterial.depthWrite = !this.spectatorViewEnabled;
+    this.solidBlockMaterial.side = this.spectatorViewEnabled ? THREE.DoubleSide : THREE.FrontSide;
+    this.solidBlockMaterial.alphaTest = 0;
+    setVoxelMaterialFullBright(this.solidBlockMaterial, this.spectatorViewEnabled);
+    this.solidBlockMaterial.needsUpdate = true;
+
+    this.cutoutBlockMaterial.transparent = false;
+    this.cutoutBlockMaterial.opacity = 1;
+    this.cutoutBlockMaterial.depthWrite = true;
+    this.cutoutBlockMaterial.side = this.spectatorViewEnabled ? THREE.DoubleSide : THREE.FrontSide;
+    this.cutoutBlockMaterial.alphaTest = 0.5;
+    setVoxelMaterialFullBright(this.cutoutBlockMaterial, this.spectatorViewEnabled);
+    this.cutoutBlockMaterial.needsUpdate = true;
   }
 
   setSpectatorView(enabled: boolean): void {
@@ -169,6 +199,10 @@ export class VoxelWorld {
     if (nextEnabled === this.spectatorViewEnabled) return;
     this.spectatorViewEnabled = nextEnabled;
     this.applyBlockMaterialViewMode();
+  }
+
+  isSpectatorViewEnabled(): boolean {
+    return this.spectatorViewEnabled;
   }
 
   setRenderDistance(nextRenderDistance: number): void {
@@ -296,10 +330,11 @@ export class VoxelWorld {
   }
 
   disposeChunkMesh(cKey: string): void {
-    const mesh = this.chunkMeshes.get(cKey);
-    if (!mesh) return;
-    this.scene.remove(mesh);
-    mesh.geometry.dispose();
+    const chunkMesh = this.chunkMeshes.get(cKey);
+    if (!chunkMesh) return;
+    this.scene.remove(chunkMesh.root);
+    chunkMesh.solid?.geometry.dispose();
+    chunkMesh.cutout?.geometry.dispose();
     this.chunkMeshes.delete(cKey);
   }
 
@@ -318,16 +353,39 @@ export class VoxelWorld {
     if (!this.storage.isChunkLoaded(cx, cz)) return;
 
     const lodStep = this.getChunkLodStep(cx, cz);
-    const geometry = this.mesher.createChunkGeometry(this.storage, cx, cz, lodStep);
-    if (!geometry) return;
+    const geometryLayers = this.mesher.createChunkGeometry(this.storage, cx, cz, lodStep);
+    if (!geometryLayers.solid && !geometryLayers.cutout) return;
 
-    const mesh = new THREE.Mesh(geometry, this.blockMaterial);
-    mesh.frustumCulled = true;
-    mesh.matrixAutoUpdate = false;
-    mesh.updateMatrix();
-    this.scene.add(mesh);
+    const root = new THREE.Group();
+    root.matrixAutoUpdate = false;
+    root.updateMatrix();
 
-    this.chunkMeshes.set(cKey, mesh);
+    const solidMesh = geometryLayers.solid
+      ? new THREE.Mesh(geometryLayers.solid, this.solidBlockMaterial)
+      : null;
+    if (solidMesh) {
+      solidMesh.frustumCulled = true;
+      solidMesh.matrixAutoUpdate = false;
+      solidMesh.updateMatrix();
+      root.add(solidMesh);
+    }
+
+    const cutoutMesh = geometryLayers.cutout
+      ? new THREE.Mesh(geometryLayers.cutout, this.cutoutBlockMaterial)
+      : null;
+    if (cutoutMesh) {
+      cutoutMesh.frustumCulled = true;
+      cutoutMesh.matrixAutoUpdate = false;
+      cutoutMesh.updateMatrix();
+      root.add(cutoutMesh);
+    }
+
+    this.scene.add(root);
+    this.chunkMeshes.set(cKey, {
+      root,
+      solid: solidMesh,
+      cutout: cutoutMesh
+    });
     this.chunkLodSteps.set(cKey, lodStep);
   }
 

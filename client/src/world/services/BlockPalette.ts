@@ -9,6 +9,8 @@ export const BLOCK_ID_LAMP = 7;
 export const BLOCK_ID_PLANK = 8;
 export const BLOCK_ID_CRAFTING_TABLE = 9;
 
+export type BlockRenderLayer = 'solid' | 'cutout';
+
 const BLOCK_IDS_BY_TYPE = Object.freeze({
   grass: BLOCK_ID_GRASS,
   dirt: BLOCK_ID_DIRT,
@@ -36,6 +38,32 @@ const BLOCK_TYPES_BY_ID: Array<BlockType | null> = [
   'crafting_table'
 ];
 
+const BLOCK_RENDER_LAYERS_BY_ID: Array<BlockRenderLayer | null> = [
+  null,
+  'solid',
+  'solid',
+  'solid',
+  'solid',
+  'cutout',
+  'solid',
+  'solid',
+  'solid',
+  'solid'
+];
+
+const BLOCK_OCCLUDES_NEIGHBOR_FACES_BY_ID = [
+  false,
+  true,
+  true,
+  true,
+  true,
+  false,
+  true,
+  true,
+  true,
+  true
+];
+
 export const BLOCK_TYPES = Object.freeze(Object.keys(BLOCK_IDS_BY_TYPE) as BlockType[]);
 
 export function isValidBlockType(type: string): type is BlockType {
@@ -50,4 +78,16 @@ export function blockTypeToId(type: string | null | undefined): number {
 
 export function blockIdToType(id: number): BlockType | null {
   return BLOCK_TYPES_BY_ID[id] ?? null;
+}
+
+export function getBlockRenderLayer(blockId: number): BlockRenderLayer {
+  return BLOCK_RENDER_LAYERS_BY_ID[blockId] ?? 'solid';
+}
+
+export function doesBlockOccludeNeighborFaces(blockId: number): boolean {
+  return BLOCK_OCCLUDES_NEIGHBOR_FACES_BY_ID[blockId] ?? false;
+}
+
+export function isSolidBlockId(blockId: number): boolean {
+  return blockId !== BLOCK_ID_AIR && getBlockRenderLayer(blockId) === 'solid';
 }

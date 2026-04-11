@@ -1,6 +1,8 @@
-import { createGreedyChunkGeometry } from './meshing/createGreedyChunkGeometry';
+import {
+  createGreedyChunkGeometry,
+  type ChunkGeometryLayers
+} from './meshing/createGreedyChunkGeometry';
 import type { VoxelStorage } from './VoxelStorage';
-import type * as THREE from 'three';
 
 type LightSource = { x: number; y: number; z: number };
 type MaskBuffers = { types: Uint8Array; signs: Int8Array };
@@ -27,7 +29,7 @@ export class VoxelChunkMesher {
     cx: number,
     cz: number,
     lodStep: number
-  ): THREE.BufferGeometry | null {
+  ): ChunkGeometryLayers {
     return createGreedyChunkGeometry({
       storage,
       cx,

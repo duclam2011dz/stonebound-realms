@@ -13,7 +13,9 @@ A voxel sandbox prototype inspired by classic block worlds. Procedural terrain, 
 - Procedural terrain with biomes, caves, and trees.
 - Greedy meshing for performant voxel rendering.
 - Day/night cycle with sky lighting and block lighting.
+- Leaf foliage keeps cutout interior faces so dense canopies do not look stripped bare.
 - Survival + spectator gamemodes.
+- Spectator mode turns solid blocks into readable x-ray shells while keeping caves bright.
 - Hotbar + inventory with stack sizes.
 - Command system (`/time`, `/tp`, `/effect`, `/gamemode`, `/biome`, `/give`).
 

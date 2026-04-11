@@ -101,8 +101,10 @@ export class DayNightSystem {
     const dayFactor = clamp(this.sunDirection.y * 1.35 + 0.06, 0, 1);
     const nightFactor = clamp(this.moonDirection.y * 1.28 + 0.02, 0, 1);
     const twilight = clamp(1 - Math.abs(this.sunDirection.y) * 4.5, 0, 1);
+    const spectatorVisionEnabled = this.world.isSpectatorViewEnabled();
+    const fullBrightViewEnabled = this.nightVisionEnabled || spectatorVisionEnabled;
     const sunlight =
-      dayFactor > 0.001
+      dayFactor > 0.001 && !spectatorVisionEnabled
         ? this.world.getSunOcclusionAt(
             playerPosition.x,
             playerPosition.y + 1.6,
@@ -118,7 +120,7 @@ export class DayNightSystem {
             frontBlocked: false
           };
     const moonVisibility =
-      nightFactor > 0.001
+      nightFactor > 0.001 && !spectatorVisionEnabled
         ? this.world.getDirectionalVisibilityAt(
             playerPosition.x,
             playerPosition.y + 1.6,
@@ -133,18 +135,25 @@ export class DayNightSystem {
     const skyOpenFraction = sunlight.skyOpenFraction ?? 1;
     const deepCaveFactor = clamp((0.06 - skyOpenFraction) / 0.06, 0, 1);
 
-    const directSunScale = this.nightVisionEnabled ? 1 : sunlight.directVisibility;
-    const directMoonScale = this.nightVisionEnabled ? 1 : Math.max(0.04, moonVisibility * 0.9);
-    this.lighting.sunLight.intensity = dayFactor * 1.9 * directSunScale;
-    this.lighting.moonLight.intensity =
-      nightFactor * (this.nightVisionEnabled ? 0.18 : 0.3) * directMoonScale;
-    const ambientBase = this.nightVisionEnabled
-      ? 0.2 + dayFactor * 0.08
-      : 0.02 + dayFactor * 0.18 + nightFactor * 0.06 + moonExposure * 0.05 + sunExposure * 0.06;
-    const hemiBase = this.nightVisionEnabled
-      ? 0.48
-      : 0.12 + dayFactor * 0.68 + nightFactor * 0.12 + moonExposure * 0.08 + sunExposure * 0.12;
-    const caveScale = this.nightVisionEnabled ? 1 : 1 - deepCaveFactor * 0.95;
+    const directSunScale = fullBrightViewEnabled ? 1 : sunlight.directVisibility;
+    const directMoonScale = fullBrightViewEnabled ? 1 : Math.max(0.04, moonVisibility * 0.9);
+    this.lighting.sunLight.intensity = spectatorVisionEnabled
+      ? dayFactor * 1.1
+      : dayFactor * 1.9 * directSunScale;
+    this.lighting.moonLight.intensity = spectatorVisionEnabled
+      ? 0.2 + nightFactor * 0.28
+      : nightFactor * (this.nightVisionEnabled ? 0.18 : 0.3) * directMoonScale;
+    const ambientBase = spectatorVisionEnabled
+      ? 0.66 + dayFactor * 0.08 + nightFactor * 0.06
+      : this.nightVisionEnabled
+        ? 0.2 + dayFactor * 0.08
+        : 0.02 + dayFactor * 0.18 + nightFactor * 0.06 + moonExposure * 0.05 + sunExposure * 0.06;
+    const hemiBase = spectatorVisionEnabled
+      ? 1.02 + dayFactor * 0.08 + nightFactor * 0.06
+      : this.nightVisionEnabled
+        ? 0.48
+        : 0.12 + dayFactor * 0.68 + nightFactor * 0.12 + moonExposure * 0.08 + sunExposure * 0.12;
+    const caveScale = fullBrightViewEnabled ? 1 : 1 - deepCaveFactor * 0.95;
     this.lighting.ambientLight.intensity = ambientBase * caveScale;
     this.lighting.hemisphereLight.intensity = hemiBase * caveScale;
 
@@ -180,14 +189,14 @@ export class DayNightSystem {
       twilight * 0.8
     );
 
-    if (!this.nightVisionEnabled) {
+    if (!fullBrightViewEnabled) {
       const nightDarkness = clamp(1 - dayFactor * 1.35, 0, 1);
       const darknessBlend = clamp(deepCaveFactor * 0.95 + nightDarkness * 0.32, 0, 1);
       this.workingSkyColor.lerp(this.workingCaveDarkSky, darknessBlend);
       this.workingFogColor.lerp(this.workingCaveDarkFog, darknessBlend * 0.92);
     }
 
-    if (this.nightVisionEnabled && dayFactor < 0.52) {
+    if (this.nightVisionEnabled && !spectatorVisionEnabled && dayFactor < 0.52) {
       const nightVisionBoost = clamp((0.45 - dayFactor) / 0.45, 0, 1);
       this.workingSkyColor.lerp(this.workingNightVisionBlend, nightVisionBoost * 0.45);
       this.workingFogColor.lerp(this.workingNightVisionBlend, nightVisionBoost * 0.35);

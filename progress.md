@@ -615,3 +615,42 @@ Update 2026-04-06 (block shader regression + phased chunk queue):
   - `node tools/test_png_texture_assets.mjs`
   - Live Playwright screenshot after the shader fix:
     - `output/quickcheck/live-world-after-fix.png`
+
+Update 2026-04-11 (leaf cutout culling fix + spectator x-ray/full-bright):
+
+- Leaf canopy rendering:
+  - Added block metadata in `client/src/world/services/BlockPalette.ts` to distinguish solid vs cutout blocks and whether a block occludes neighbor faces.
+  - Reworked `client/src/world/services/meshing/createGreedyChunkGeometry.ts` so cutout foliage no longer uses the default solid-solid face culling rule.
+  - Leaf/leaf boundaries now keep the two interior quads needed for alpha-cutout gaps, and mixed solid/leaf boundaries keep both sides as well.
+  - Meshing now outputs separate `solid` and `cutout` geometry layers through `client/src/world/services/VoxelChunkMesher.ts`.
+- Spectator rendering / visibility:
+  - Split chunk rendering in `client/src/world/VoxelWorld.ts` into separate solid + cutout materials.
+  - Solid blocks in spectator now render as translucent double-sided shells with `depthWrite = false`, so terrain can be seen through instead of disappearing behind the front surface.
+  - Cutout blocks (leaves) stay cutout-rendered instead of becoming globally translucent.
+  - Added a full-bright material uniform in `client/src/core/render/lighting/createVoxelMaterial.ts` and enabled it for spectator mode.
+  - `client/src/systems/DayNightSystem.ts` now keeps spectator view bright underground/night-time instead of letting cave darkness win.
+- Validation:
+  - `npm run typecheck`: pass.
+  - `npm run lint`: pass.
+  - `npm run format:check`: pass.
+  - `npm run format`: applied.
+  - Vite + Playwright targeted regression (`tools/test_gamemode_break_movement.mjs`): pass.
+    - Artifact: `output/gamemode-break-movement/metrics.json`
+    - Leaf geometry metrics:
+      - solid pair shell = `6` quads
+      - leaf pair = `8` quads (keeps the two interior cutout faces)
+      - wood/leaf pair = `12` quads
+    - Spectator material metrics:
+      - solid blocks => `transparent: true`, `opacity: 0.36`, `depthWrite: false`, `side: DoubleSide`, `fullBright: 1`
+      - cutout blocks => `transparent: false`, `opacity: 1`, `side: DoubleSide`, `fullBright: 1`
+    - Spectator fly check:
+      - `yBeforeFlyUp: 68.019...`
+      - `yAfterFlyUp: 78.519...`
+      - `yAfterFlyDown: 68.019...`
+    - Visual artifacts reviewed:
+      - `output/gamemode-break-movement/leaf-cutout.png`
+      - `output/gamemode-break-movement/survival-underground-night.png`
+      - `output/gamemode-break-movement/spectator-underground-night.png`
+  - Generic Playwright smoke via `tools/web_game_playwright_client.js`: pass.
+    - Artifacts: `output/web-game-smoke/shot-0.png`, `shot-1.png`, `shot-2.png`, `state-0.json`, `state-1.json`, `state-2.json`
+    - No `errors-*.json` files emitted in `output/web-game-smoke`.
